@@ -1,5 +1,4 @@
-// backend/src/controllers/userController.js
-const pool = require('../db');           // ← was './db', needs to point up one level
+const pool = require('../db');
 
 // GET /api/users
 const getAllUsers = async (req, res) => {
@@ -15,10 +14,7 @@ const getAllUsers = async (req, res) => {
 const getUserById = async (req, res) => {
   const { id } = req.params;
   try {
-    const { rows } = await pool.query(
-      'SELECT * FROM users WHERE user_id = $1',
-      [id]
-    );
+    const { rows } = await pool.query('SELECT * FROM users WHERE user_id = $1', [id]);
     if (!rows.length) return res.sendStatus(404);
     res.json(rows[0]);
   } catch (err) {
@@ -44,13 +40,15 @@ const createUser = async (req, res) => {
 // PATCH /api/users/:id
 const updateUser = async (req, res) => {
   const { id } = req.params;
-  const fields = [], values = [];
-  Object.entries(req.body).forEach(([k,v], i) => {
+  const fields = [];
+  const values = [];
+  Object.entries(req.body).forEach(([k, v], i) => {
     fields.push(`${k} = $${i+1}`);
     values.push(v);
   });
   if (!fields.length) return res.sendStatus(400);
   values.push(id);
+
   try {
     const { rows } = await pool.query(
       `UPDATE users SET ${fields.join(', ')} WHERE user_id = $${values.length} RETURNING *`,
@@ -80,14 +78,13 @@ const deleteUser = async (req, res) => {
 const getSupervisees = async (req, res) => {
   const { id } = req.params;
   try {
-    const { rows } = await pool.query(
-      `SELECT u.user_id, u.full_name, u.email, u.role
-       FROM user_supervisors us
-       JOIN users u ON us.supervisee_id = u.user_id
-       WHERE us.supervisor_id = $1
-       ORDER BY u.full_name`,
-      [id]
-    );
+    const { rows } = await pool.query(`
+      SELECT u.user_id, u.full_name, u.email, u.role
+      FROM user_supervisors us
+      JOIN users u ON us.supervisee_id = u.user_id
+      WHERE us.supervisor_id = $1
+      ORDER BY u.full_name
+    `, [id]);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -101,8 +98,7 @@ const assignSupervisee = async (req, res) => {
   try {
     await pool.query(
       `INSERT INTO user_supervisors (supervisor_id, supervisee_id)
-       VALUES ($1,$2)
-       ON CONFLICT DO NOTHING`,
+       VALUES ($1,$2) ON CONFLICT DO NOTHING`,
       [id, supervisee_id]
     );
     res.sendStatus(204);
@@ -126,6 +122,35 @@ const unassignSupervisee = async (req, res) => {
   }
 };
 
+/* ── Change Password ── */
+// PATCH /api/users/:id/password
+const changePassword = async (req, res) => {
+  const { id } = req.params;
+  const { oldPassword, newPassword } = req.body;
+  try {
+    // 1) fetch current password
+    const { rows } = await pool.query(
+      'SELECT password FROM users WHERE user_id = $1',
+      [id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'User not found' });
+
+    // 2) verify old password
+    if (rows[0].password !== oldPassword) {
+      return res.status(400).json({ error: 'Old password incorrect' });
+    }
+
+    // 3) update to new password
+    await pool.query(
+      'UPDATE users SET password = $1 WHERE user_id = $2',
+      [newPassword, id]
+    );
+    res.json({ message: 'Password changed successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 module.exports = {
   getAllUsers,
   getUserById,
@@ -134,5 +159,6 @@ module.exports = {
   deleteUser,
   getSupervisees,
   assignSupervisee,
-  unassignSupervisee
+  unassignSupervisee,
+  changePassword
 };
