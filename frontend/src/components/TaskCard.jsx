@@ -1,9 +1,9 @@
 // src/components/TaskCard.jsx
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { getTaskColor, borderColors, interiorColors } from '../utils/getTaskColor';
-import { updateTask, deleteTask } from '../api/tasks';
 import DelegateModal from './DelegateModal';
-import TaskDetailsModal from './TaskDetailsModal';
+import { updateTask, deleteTask } from '../api/tasks';
+import { AuthContext } from '../AuthContext';
 
 export default function TaskCard({
   task,
@@ -11,101 +11,96 @@ export default function TaskCard({
   wasExpired = false,
   onStatusChange
 }) {
-  const [showDelegate, setShowDelegate] = useState(false);
-  const [showDetails, setShowDetails]   = useState(false);
+  const { user } = useContext(AuthContext);
+  const isOwner = user.user_id === task.owner_id;
 
   const type       = getTaskColor(task.importance, task.urgency);
   const border     = borderColors[type];
   const background = interiorColors[type];
   const textColor  = '#000';
 
-  // Mark complete (only if not already completed)
+  const [showDelegate, setShowDelegate] = useState(false);
+
   const handleComplete = async e => {
-    e.stopPropagation();
-    if (task.status === 'completed') return;
-    await updateTask(task.task_id, { status: 'completed' });
-    onStatusChange?.();
-  };
+    // only the owner may actually mark complete
+    if (!isOwner) return;
 
-  // Delete task
-  const handleDelete = async e => {
-    e.stopPropagation();
-    if (!window.confirm('Delete this task?')) return;
-    await deleteTask(task.task_id);
-    onStatusChange?.();
-  };
-
-  // Determine archive badge
-  let badge = null;
-  if (isArchived) {
-    if (task.status === 'completed') {
-      badge = wasExpired
-        ? { text: 'Late',   color: '#FFB74D' }
-        : { text: 'Complete', color: '#4caf50' };
-    } else {
-      badge = { text: 'Incomplete', color: '#E57373' };
+    try {
+      await updateTask(task.task_id, {
+        status: e.target.checked ? 'completed' : 'pending'
+      });
+      onStatusChange?.();
+    } catch (err) {
+      console.error(err);
     }
-  }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Delete this task?')) return;
+    try {
+      await deleteTask(task.task_id);
+      onStatusChange?.();
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return (
     <>
-      <div
-        onClick={() => setShowDetails(true)}
-        style={{
-          position:       'relative',
-          border:         `2px solid ${border}`,
-          background:     background,
-          color:          textColor,
-          padding:        '0.75rem 1rem',
-          marginBottom:   '0.5rem',
-          borderRadius:   '6px',
-          display:        'flex',
-          justifyContent: 'space-between',
-          alignItems:     'center',
-          cursor:         'pointer'
-        }}
-      >
-        {/* Left: checkbox, title, owner */}
-        <div
-          style={{
-            display:    'flex',
-            alignItems: 'center',
-            gap:        '0.75rem',
-            flex:       1,
-            overflow:   'hidden'
-          }}
-        >
+      <div style={{
+        border:        `2px solid ${border}`,
+        background:     background,
+        color:          textColor,
+        padding:        '0.75rem 1rem',
+        marginBottom:   '0.5rem',
+        borderRadius:   '6px',
+        display:        'flex',
+        justifyContent: 'space-between',
+        alignItems:     'center'
+      }}>
+        {/* Left: checkbox + title + owner */}
+        <div style={{
+          display:      'flex',
+          alignItems:   'center',
+          gap:          '0.75rem',
+          flex:         1,
+          overflow:     'hidden'
+        }}>
           <input
             type="checkbox"
             checked={task.status === 'completed'}
-            disabled={task.status === 'completed'}
-            onClick={handleComplete}
+            onChange={handleComplete}
+            disabled={!isOwner}
           />
           <span style={{
-            fontWeight:   'bold',
-            whiteSpace:   'nowrap',
-            overflow:     'hidden',
-            textOverflow: 'ellipsis',
-            maxWidth:     '40%'
+            fontWeight:    'bold',
+            whiteSpace:    'nowrap',
+            overflow:      'hidden',
+            textOverflow:  'ellipsis',
+            maxWidth:      '40%'
           }}>
             {task.title}
           </span>
           <span style={{
-            whiteSpace:   'nowrap',
-            overflow:     'hidden',
-            textOverflow: 'ellipsis',
-            fontSize:     '0.85rem',
-            maxWidth:     '30%'
+            whiteSpace:    'nowrap',
+            overflow:      'hidden',
+            textOverflow:  'ellipsis',
+            fontSize:      '0.85rem',
+            maxWidth:      '30%'
           }}>
             {task.owner_name}
           </span>
         </div>
 
-        {/* Right: delegate/time/delete + badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          {!isArchived && type === 'delegate' && (
+        {/* Right: delegate button, time, delete */}
+        <div style={{
+          display:      'flex',
+          alignItems:   'center',
+          gap:          '1rem'
+        }}>
+          {type === 'delegate' && (
             <button
-              onClick={e => { e.stopPropagation(); setShowDelegate(true); }}
+              onClick={() => setShowDelegate(true)}
               style={{
                 background:   'transparent',
                 border:       `1px solid ${border}`,
@@ -119,24 +114,16 @@ export default function TaskCard({
               Delegate
             </button>
           )}
-
-          {isArchived && badge && (
-            <span style={{
-              background:   'transparent',
-              border:       `1px solid ${badge.color}`,
-              borderRadius: '12px',
-              padding:      '0.25rem 0.75rem',
-              fontWeight:   'bold',
-              color:        badge.color
-            }}>
-              {badge.text}
-            </span>
-          )}
-
-          <span style={{ fontWeight: 'bold', minWidth: '4ch', textAlign: 'right' }}>
-            {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          <span style={{
+            fontWeight: 'bold',
+            minWidth:   '4ch',
+            textAlign:  'right'
+          }}>
+            {new Date(task.deadline).toLocaleTimeString([], {
+              hour:   '2-digit',
+              minute: '2-digit'
+            })}
           </span>
-
           <button
             onClick={handleDelete}
             style={{
@@ -152,21 +139,10 @@ export default function TaskCard({
         </div>
       </div>
 
-      {/* Delegate modal */}
       {showDelegate && (
         <DelegateModal
           taskId={task.task_id}
           onClose={() => setShowDelegate(false)}
-        />
-      )}
-
-      {/* Details modal */}
-      {showDetails && (
-        <TaskDetailsModal
-          task={task}
-          isArchived={isArchived}
-          wasExpired={wasExpired}
-          onClose={() => setShowDetails(false)}
         />
       )}
     </>

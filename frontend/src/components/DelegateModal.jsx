@@ -1,66 +1,109 @@
-// frontend/src/components/DelegateModal.jsx
+// src/components/DelegateModal.jsx
 import React, { useState, useEffect } from 'react';
+import { getUsers }                 from '../api/users';  // ← fixed path
 import { getAssignees, addAssignee, removeAssignee } from '../api/tasks';
 
 export default function DelegateModal({ taskId, onClose }) {
-  const [assignees, setAssignees] = useState([]);
-  const [newUserId, setNewUserId] = useState('');
+  const [allUsers,   setAllUsers]   = useState([]);
+  const [assignees,  setAssignees]  = useState([]);
 
   useEffect(() => {
+    getUsers().then(setAllUsers).catch(console.error);
     getAssignees(taskId).then(setAssignees).catch(console.error);
   }, [taskId]);
 
-  const handleAdd = async () => {
-    if (!newUserId) return;
-    await addAssignee(taskId, +newUserId);
-    setNewUserId('');
-    const updated = await getAssignees(taskId);
-    setAssignees(updated);
-  };
-
-  const handleRemove = async (userId) => {
-    await removeAssignee(taskId, userId);
-    setAssignees(prev => prev.filter(a => a.user_id !== userId));
+  const toggleUser = async (u) => {
+    if (assignees.some(a => a.user_id === u.user_id)) {
+      await removeAssignee(taskId, u.user_id);
+    } else {
+      await addAssignee(taskId, u.user_id);
+    }
+    setAssignees(await getAssignees(taskId));
   };
 
   return (
-    <div style={overlay}>
-      <div style={modal}>
-        <button onClick={onClose} style={closeBtn}>×</button>
-        <h3>Assignees</h3>
-        <ul>
-          {assignees.map(a => (
-            <li key={a.user_id}>
-              {a.full_name}
-              <button onClick={() => handleRemove(a.user_id)} style={{ marginLeft:'1rem' }}>
-                −
-              </button>
-            </li>
+    <div style={{
+      position:      'fixed',
+      top:           0, left: 0, right: 0, bottom: 0,
+      background:    'rgba(0,0,0,0.5)',
+      display:       'flex',
+      alignItems:    'center',
+      justifyContent:'center',
+      zIndex:        1000
+    }}>
+      <div style={{
+        position:     'relative',
+        background:   '#cccccc',
+        padding:      '2rem',
+        borderRadius: '8px',
+        width:        '400px',
+        maxHeight:    '80vh',
+        overflowY:    'auto'
+      }}>
+        <button
+          onClick={onClose}
+          style={{
+            position:   'absolute',
+            top:        '0.5rem',
+            right:      '0.5rem',
+            background: 'transparent',
+            border:     'none',
+            fontSize:   '1.5rem',
+            cursor:     'pointer',
+            color:      '#000'
+          }}
+        >
+          ×
+        </button>
+        <h3>Delegate Task</h3>
+
+        <div>
+          <h4>Current Assignees</h4>
+          {assignees.map(u => (
+            <div key={u.user_id} style={{
+              display:       'flex',
+              justifyContent:'space-between',
+              alignItems:    'center',
+              margin:        '0.5rem 0'
+            }}>
+              <span>{u.full_name}</span>
+              <button onClick={() => toggleUser(u)} style={{
+                border:       'none',
+                background:   '#e57373',
+                color:        '#fff',
+                padding:      '0.3rem 0.6rem',
+                borderRadius: '4px',
+                cursor:       'pointer'
+              }}>−</button>
+            </div>
           ))}
-        </ul>
-        <div style={{ marginTop:'1rem' }}>
-          <input
-            placeholder="User ID"
-            value={newUserId}
-            onChange={e => setNewUserId(e.target.value)}
-            style={{ width:'4ch', marginRight:'0.5rem' }}
-          />
-          <button onClick={handleAdd}>＋ Add</button>
+        </div>
+
+        <hr />
+
+        <div>
+          <h4>Available Users</h4>
+          {allUsers.filter(u => !assignees.some(a => a.user_id === u.user_id))
+            .map(u => (
+            <div key={u.user_id} style={{
+              display:       'flex',
+              justifyContent:'space-between',
+              alignItems:    'center',
+              margin:        '0.5rem 0'
+            }}>
+              <span>{u.full_name}</span>
+              <button onClick={() => toggleUser(u)} style={{
+                border:       'none',
+                background:   '#64b5f6',
+                color:        '#fff',
+                padding:      '0.3rem 0.6rem',
+                borderRadius: '4px',
+                cursor:       'pointer'
+              }}>＋</button>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 }
-
-const overlay = {
-  position:'fixed',top:0,left:0,right:0,bottom:0,
-  background:'rgba(0,0,0,0.5)',display:'flex',
-  alignItems:'center',justifyContent:'center',zIndex:1000
-};
-const modal = {
-  background:'#cccccc',padding:'1.5rem',borderRadius:'8px',position:'relative'
-};
-const closeBtn = {
-  position:'absolute',top:'0.5rem',right:'0.5rem',
-  background:'transparent',border:'none',fontSize:'1.5rem',cursor:'pointer',color:'#000'
-};

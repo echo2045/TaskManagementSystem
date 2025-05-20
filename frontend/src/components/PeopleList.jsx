@@ -1,82 +1,83 @@
-// src/components/PeopleList.jsx
+// frontend/src/components/PeopleList.jsx
 import React, { useEffect, useState } from 'react';
-import { getUsers } from '../api/users';   // ← was './api/users'
+import { getUsers } from '../api/users';
 
-export default function PeopleList({ selectedUserId, onSelectUser }) {
+export default function PeopleList({
+  currentUserId,
+  selectedUserId,
+  onSelectUser
+}) {
   const [users, setUsers]   = useState([]);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    getUsers().then(setUsers).catch(console.error);
+    getUsers().then(us=>setUsers(us)).catch(console.error);
   }, []);
 
-  const filtered = users.filter(u =>
-    u.full_name.toLowerCase().includes(search.toLowerCase()) ||
-    u.username.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = users
+    .filter(u => u.user_id !== currentUserId)
+    .filter(u =>
+      u.full_name.toLowerCase().includes(search.toLowerCase())
+      || u.username.toLowerCase().includes(search.toLowerCase())
+    );
 
   return (
     <div style={{
-      width: '250px',
-      background: '#2E2E2E',
-      display: 'flex',
+      width:         '200px',
+      display:       'flex',
       flexDirection: 'column',
-      boxSizing: 'border-box',
-      height: '100vh'
+      background:    '#2E2E2E',
+      boxSizing:     'border-box',
+      height:        '100%'
     }}>
       <div style={{
-        background: '#2E2E2E',
-        color: '#fff',
-        padding: '1rem',
-        textAlign: 'center',
-        fontSize: '1.25rem'
+        padding:    '1rem',
+        color:      '#fff',
+        textAlign:  'center',
+        fontSize:   '1.2rem'
       }}>
         People
       </div>
       <div style={{
-        background: '#3B3B3B',
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '1rem',
-        boxSizing: 'border-box',
-        overflowY: 'auto'
+        background:   '#3B3B3B',
+        padding:      '0.5rem',
+        boxSizing:    'border-box'
       }}>
         <input
-          type="text"
-          placeholder="Search People"
+          placeholder="Search..."
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e=>setSearch(e.target.value)}
           style={{
-            padding: '0.5rem',
-            borderRadius: '4px',
-            border: '1px solid #cccccc',
-            marginBottom: '1rem',
-            background: '#cccccc',
-            color: '#000'
+            width:       '100%',
+            padding:     '0.5rem',
+            borderRadius:'4px',
+            border:      '1px solid #ccc',
+            boxSizing:   'border-box'
           }}
         />
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {filtered.map(user => (
-            <div
-              key={user.user_id}
-              onClick={() => onSelectUser(user)}
-              style={{
-                background: user.user_id === selectedUserId ? '#dddddd' : '#4F4F4F',
-                border: '1px solid #555555',
-                color: user.user_id === selectedUserId ? '#000' : '#fff',
-                padding: '0.5rem',
-                borderRadius: '4px',
-                marginBottom: '0.5rem',
-                cursor: 'pointer',
-                textAlign: 'center'
-              }}
-            >
-              <strong>{user.full_name}</strong><br />
-              <small>{user.email}</small>
-            </div>
-          ))}
-        </div>
+      </div>
+      <div style={{
+        flex:         1,
+        overflowY:    'auto',
+        padding:      '0.5rem',
+        boxSizing:    'border-box'
+      }}>
+        {filtered.map(u => (
+          <div
+            key={u.user_id}
+            onClick={() => onSelectUser(u)}
+            style={{
+              padding:       '0.5rem',
+              marginBottom:  '0.5rem',
+              borderRadius:  '4px',
+              background:    u.user_id === selectedUserId ? '#888888' : '#4F4F4F',
+              color:         u.user_id === selectedUserId ? '#000' : '#fff',
+              cursor:        'pointer'
+            }}
+          >
+            {u.full_name}
+          </div>
+        ))}
       </div>
     </div>
   );

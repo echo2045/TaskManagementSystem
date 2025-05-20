@@ -4,76 +4,88 @@ import TaskStep1 from './TaskStep1';
 import TaskStep2 from './TaskStep2';
 import { createTask } from '../api/tasks';
 
-export default function CreateTaskModal({ onClose, taskTitle, ownerId }) {
+export default function CreateTaskModal({
+  visible,
+  onClose,
+  onCreated,
+  ownerId,
+  initialTitle = ''
+}) {
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
-    title:        taskTitle,
-    description:  '',
-    deadlineDate: '',
-    deadlineTime: '',
-    importance:   3,
-    urgency:      3
+  const [data, setData] = useState({
+    title:       initialTitle,
+    description: '',
+    deadlineDate:'',
+    deadlineTime:'',
+    importance:  3,
+    urgency:     3
   });
 
-  const handleNext = data => {
-    setFormData(prev => ({ ...prev, ...data }));
+  const handleNext = step1Data => {
+    setData(d => ({ ...d, ...step1Data, title: initialTitle }));
     setStep(2);
   };
 
-  const handleSubmit = async data => {
-    const all = { ...formData, ...data };
-    const iso = new Date(`${all.deadlineDate}T${all.deadlineTime}:00`).toISOString();
+  const handleBack = () => setStep(1);
+
+  const handleSubmit = async step2Data => {
+    const combined = { ...data, ...step2Data };
+    const dt = new Date(`${combined.deadlineDate}T${combined.deadlineTime}`);
     try {
       await createTask({
-        title:       all.title,
-        description: all.description,
-        deadline:    iso,
-        importance:  all.importance,
-        urgency:     all.urgency,
+        title:       combined.title,
+        description: combined.description,
+        deadline:    dt.toISOString(),
+        importance:  combined.importance,
+        urgency:     combined.urgency,
         owner_id:    ownerId
       });
-      onClose();
+      onCreated();
     } catch (err) {
       console.error('Error creating task:', err);
-      alert('Failed to create task—see console.');
     }
   };
 
+  if (!visible) return null;
+
   return (
-    <div style={overlay}>
-      <div style={modal}>
-        {/* Close button */}
-        <button onClick={onClose} style={closeBtn}>×</button>
-        {step === 1
-          ? <TaskStep1 onNext={handleNext} defaultData={formData}/>
-          : <TaskStep2 onSubmit={handleSubmit} defaultData={formData}/>
-        }
+    <div style={{
+      position:'fixed', top:0, left:0, right:0, bottom:0,
+      background:'rgba(0,0,0,0.5)',
+      display:'flex', alignItems:'center', justifyContent:'center',
+      zIndex:1000
+    }}>
+      <div style={{
+        position:'relative',
+        background:'#cccccc',
+        padding:'2rem',
+        borderRadius:'8px',
+        width:'400px',
+        boxSizing:'border-box'
+      }}>
+        <button
+          onClick={onClose}
+          style={{
+            position:'absolute', top:'0.5rem', right:'0.5rem',
+            background:'transparent', border:'none',
+            fontSize:'1.5rem', cursor:'pointer'
+          }}
+          aria-label="Close"
+        >×</button>
+
+        {step === 1 ? (
+          <TaskStep1
+            defaultData={data}
+            onNext={handleNext}
+          />
+        ) : (
+          <TaskStep2
+            defaultData={data}
+            onBack={handleBack}
+            onSubmit={handleSubmit}
+          />
+        )}
       </div>
     </div>
   );
 }
-
-const overlay = {
-  position:'fixed', top:0, left:0, right:0, bottom:0,
-  background:'rgba(0,0,0,0.5)',
-  display:'flex', alignItems:'center', justifyContent:'center',
-  zIndex:1000
-};
-const modal = {
-  position:     'relative',
-  background:   '#cccccc',
-  padding:      '2rem',
-  borderRadius: '8px',
-  width:        '500px',
-  boxSizing:    'border-box'
-};
-const closeBtn = {
-  position:   'absolute',
-  top:        '0.5rem',
-  right:      '0.5rem',
-  background: 'transparent',
-  border:     'none',
-  fontSize:   '1.5rem',
-  cursor:     'pointer',
-  color:      '#000'
-};

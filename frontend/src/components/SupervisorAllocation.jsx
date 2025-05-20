@@ -1,12 +1,18 @@
 // src/components/SupervisorAllocation.jsx
 import React, { useState, useEffect } from 'react';
-import { getUsers, getSupervisees, assignSupervisee, unassignSupervisee } from '../api/users';
+import {
+  getUsers,
+  getSupervisees,
+  assignSupervisee,
+  unassignSupervisee
+} from '../api/users';
 
 export default function SupervisorAllocation({ currentUser }) {
   const [supervisor, setSupervisor] = useState(currentUser);
   const [allUsers, setAllUsers]     = useState([]);
   const [team, setTeam]             = useState([]);
   const [search, setSearch]         = useState('');
+  const [teamSearch, setTeamSearch] = useState('');
 
   // Load all users and the selected supervisor's team
   useEffect(() => {
@@ -20,7 +26,7 @@ export default function SupervisorAllocation({ currentUser }) {
       .catch(console.error);
   };
 
-  // Available candidates based on role rules
+  // Filter “Available to Assign”
   const available = allUsers
     .filter(u => u.user_id !== supervisor.user_id)
     .filter(u => !team.some(m => m.user_id === u.user_id))
@@ -38,7 +44,14 @@ export default function SupervisorAllocation({ currentUser }) {
           return false;
       }
     })
-    .filter(u => u.full_name.toLowerCase().includes(search.toLowerCase()));
+    .filter(u =>
+      u.full_name.toLowerCase().includes(search.toLowerCase())
+    );
+
+  // Filter “Team Members”
+  const filteredTeam = team.filter(u =>
+    u.full_name.toLowerCase().includes(teamSearch.toLowerCase())
+  );
 
   const handleAdd = u => {
     assignSupervisee(supervisor.user_id, u.user_id)
@@ -88,7 +101,19 @@ export default function SupervisorAllocation({ currentUser }) {
         {/* Team Members */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <h3>Team Members</h3>
-          {team.map(u => (
+          <input
+            type="text"
+            placeholder="Search team members..."
+            value={teamSearch}
+            onChange={e => setTeamSearch(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '0.5rem',
+              marginBottom: '1rem',
+              boxSizing: 'border-box'
+            }}
+          />
+          {filteredTeam.map(u => (
             <div
               key={u.user_id}
               style={{
@@ -108,7 +133,7 @@ export default function SupervisorAllocation({ currentUser }) {
                 style={{
                   background:   'transparent',
                   border:       'none',
-                  color:        '#E57373', // base red
+                  color:        '#E57373',
                   fontSize:     '1.25rem',
                   cursor:       'pointer'
                 }}
@@ -124,10 +149,15 @@ export default function SupervisorAllocation({ currentUser }) {
           <h3>Available to Assign</h3>
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Search available..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
+            style={{
+              width: '100%',
+              padding: '0.5rem',
+              marginBottom: '1rem',
+              boxSizing: 'border-box'
+            }}
           />
           {available.map(u => (
             <div
@@ -149,7 +179,7 @@ export default function SupervisorAllocation({ currentUser }) {
                 style={{
                   background:   'transparent',
                   border:       'none',
-                  color:        '#4caf50', // base green
+                  color:        '#4caf50',
                   fontSize:     '1.25rem',
                   cursor:       'pointer'
                 }}

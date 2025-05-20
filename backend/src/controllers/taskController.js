@@ -1,15 +1,16 @@
 // backend/src/controllers/taskController.js
 const pool = require('../db');
 
-// GET /api/tasks — active tasks
+// GET /api/tasks — active (pending + not-yet-expired) tasks
 const getAllTasks = async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT t.*, u.full_name AS owner_name
-      FROM tasks t
-      JOIN users u ON t.owner_id = u.user_id
-      WHERE t.status = 'pending'
-      ORDER BY t.deadline ASC
+        FROM tasks t
+        JOIN users u ON t.owner_id = u.user_id
+       WHERE t.status = 'pending'
+         AND t.deadline >= NOW()
+       ORDER BY t.deadline ASC
     `);
     res.json(result.rows);
   } catch (err) {
@@ -18,15 +19,16 @@ const getAllTasks = async (req, res) => {
   }
 };
 
-// GET /api/tasks/archive — archived tasks
+// GET /api/tasks/archive — completed OR expired tasks
 const getArchivedTasks = async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT t.*, u.full_name AS owner_name
-      FROM tasks t
-      JOIN users u ON t.owner_id = u.user_id
-      WHERE t.status != 'pending'
-      ORDER BY t.deadline ASC
+        FROM tasks t
+        JOIN users u ON t.owner_id = u.user_id
+       WHERE t.status != 'pending'
+          OR t.deadline < NOW()
+       ORDER BY t.deadline ASC
     `);
     res.json(result.rows);
   } catch (err) {
@@ -54,22 +56,14 @@ const createTask = async (req, res) => {
   }
 };
 
-// PATCH /api/tasks/:id — update status or other fields
+// PATCH /api/tasks/:id — update status (mark complete)
 const updateTask = async (req, res) => {
   const { id } = req.params;
-  const fields = [];
-  const values = [];
-  Object.entries(req.body).forEach(([key, val], idx) => {
-    fields.push(`${key} = $${idx + 1}`);
-    values.push(val);
-  });
-  if (!fields.length) return res.sendStatus(400);
-  values.push(id);
-
+  const { status } = req.body;
   try {
     const result = await pool.query(
-      `UPDATE tasks SET ${fields.join(', ')} WHERE task_id = $${values.length} RETURNING *`,
-      values
+      'UPDATE tasks SET status = $1 WHERE task_id = $2 RETURNING *',
+      [status, id]
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -95,10 +89,10 @@ const getTaskAssignees = async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query(
-      `SELECT u.user_id, u.full_name, u.email, ta.assigned_at, ta.is_completed
-       FROM task_assignments ta
-       JOIN users u ON ta.assignee_id = u.user_id
-       WHERE ta.task_id = $1`,
+      `SELECT u.user_id, u.full_name, u.email, ta.assigned_at
+         FROM task_assignments ta
+         JOIN users u ON ta.assignee_id = u.user_id
+        WHERE ta.task_id = $1`,
       [id]
     );
     res.json(result.rows);
@@ -112,23 +106,22 @@ const getTaskAssignees = async (req, res) => {
 const assignTask = async (req, res) => {
   const { id } = req.params;
   const { user_id } = req.body;
-  const assigned_by = 1; // TODO: pull from auth
+  const assigned_by = req.user?.user_id || 1; // replace with real auth user
   try {
     await pool.query(
       `INSERT INTO task_assignments (task_id, assignee_id, assigned_by)
        SELECT $1, $2, $3
-       WHERE NOT EXISTS (
-         SELECT 1 FROM task_assignments
-         WHERE task_id=$1 AND assignee_id=$2
-       )`,
+        WHERE NOT EXISTS (
+          SELECT 1 FROM task_assignments
+           WHERE task_id=$1 AND assignee_id=$2
+        )`,
       [id, user_id, assigned_by]
     );
-    // return updated list
     const updated = await pool.query(
-      `SELECT u.user_id, u.full_name, u.email, ta.assigned_at, ta.is_completed
-       FROM task_assignments ta
-       JOIN users u ON ta.assignee_id = u.user_id
-       WHERE ta.task_id = $1`,
+      `SELECT u.user_id, u.full_name, u.email
+         FROM task_assignments ta
+         JOIN users u ON ta.assignee_id = u.user_id
+        WHERE ta.task_id = $1`,
       [id]
     );
     res.json(updated.rows);
