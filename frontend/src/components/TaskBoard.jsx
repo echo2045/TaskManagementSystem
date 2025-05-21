@@ -1,39 +1,54 @@
 // src/components/TaskBoard.jsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import TaskCard        from './TaskCard';
 import CreateTaskModal from './CreateTaskModal';
 import { getTasksForUser } from '../api/tasks';
+import { getSupervisees }  from '../api/users';
+import { AuthContext }     from '../AuthContext';
 import { getTaskColor }    from '../utils/getTaskColor';
 
 export default function TaskBoard({ filterUser, currentUser }) {
+  const { user } = useContext(AuthContext);
+
   const [tasks, setTasks]           = useState([]);
   const [now, setNow]               = useState(new Date());
   const [search, setSearch]         = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [superviseeIds, setSuperviseeIds] = useState([]);
 
-  // Task‐entry state
-  const [newTitle, setNewTitle]     = useState('');
-  const [modalOpen, setModalOpen]   = useState(false);
+  // For creating
+  const [newTitle, setNewTitle]   = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
 
-  // Always fetch for the **logged‐in** user
-  const userId = currentUser.user_id;
+  // Whose tasks are being viewed?
+  const viewingUserId = filterUser?.user_id || currentUser.user_id;
 
+  // Load supervisees for guard logic
+  useEffect(() => {
+    if (user.role !== 'manager' && user.role !== 'hr') {
+      getSupervisees(user.user_id)
+        .then(list => setSuperviseeIds(list.map(u => u.user_id)))
+        .catch(console.error);
+    }
+  }, [user]);
+
+  // Fetch tasks
   const fetchTasks = useCallback(() => {
-    getTasksForUser(filterUser?.user_id || userId)
+    getTasksForUser(viewingUserId)
       .then(setTasks)
       .catch(console.error);
-  }, [filterUser, userId]);
+  }, [viewingUserId]);
 
-  // Poll every 30s, aligned to :01 past the minute
+  // Poll aligned to :01 every 30s
   useEffect(() => {
     fetchTasks();
     let tId, iId;
     const align = () => {
       const s = new Date().getSeconds();
-      const delay = s < 1  ? (1 - s) * 1000
-                  : s < 31 ? (31 - s) * 1000
-                  : (61 - s) * 1000;
+      const delay = s < 1 ? (1 - s)*1000
+                  : s < 31 ? (31 - s)*1000
+                  : (61 - s)*1000;
       tId = setTimeout(() => {
         setNow(new Date());
         fetchTasks();
@@ -44,18 +59,27 @@ export default function TaskBoard({ filterUser, currentUser }) {
       }, delay);
     };
     align();
-    return () => {
-      clearTimeout(tId);
-      clearInterval(iId);
-    };
+    return () => { clearTimeout(tId); clearInterval(iId); };
   }, [fetchTasks]);
 
-  // Filter to only pending & not‐expired tasks
-  let visible = tasks.filter(
-    t => t.status === 'pending' && new Date(t.deadline) >= now
-  );
+  // Guard: viewing other only if manager/HR or supervisee
+  const viewingOther = viewingUserId !== currentUser.user_id;
+  const allowed = !viewingOther
+    || user.role === 'manager'
+    || user.role === 'hr'
+    || superviseeIds.includes(viewingUserId);
+  if (!allowed) {
+    return (
+      <div style={{ padding:'2rem', color:'#000' }}>
+        You are not this person’s supervisor.
+      </div>
+    );
+  }
 
-  // Apply search/type/date filters
+  // Filter to pending + not expired
+  let visible = tasks.filter(t =>
+    t.status === 'pending' && new Date(t.deadline) >= now
+  );
   if (search) {
     visible = visible.filter(t =>
       t.title.toLowerCase().includes(search.toLowerCase())
@@ -73,27 +97,24 @@ export default function TaskBoard({ filterUser, currentUser }) {
     );
   }
 
-  // Group by calendar date
+  // Group by date
   const grouped = visible.reduce((acc, t) => {
     const d = new Date(t.deadline).toLocaleDateString();
     (acc[d] = acc[d] || []).push(t);
     return acc;
   }, {});
 
-  // Only allow creating tasks for yourself
-  const canCreate = !filterUser || filterUser.user_id === userId;
+  // Only allow creating for yourself
+  const canCreate = viewingUserId === currentUser.user_id;
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
-      {/* Task Entry — only for your own tasks */}
       {canCreate && (
         <>
           <h3 style={{ padding:'0 1rem' }}>Task Entry</h3>
           <div style={{
-            display:'flex',
-            gap:'0.5rem',
-            padding:'0 1rem',
-            marginBottom:'1rem'
+            display:'flex', gap:'0.5rem',
+            padding:'0 1rem', marginBottom:'1rem'
           }}>
             <input
               placeholder="Enter Task Name"
@@ -104,11 +125,8 @@ export default function TaskBoard({ filterUser, currentUser }) {
             <button
               onClick={() => setModalOpen(true)}
               disabled={!newTitle.trim()}
-            >
-              Create
-            </button>
+            >Create</button>
           </div>
-
           <CreateTaskModal
             visible={modalOpen}
             onClose={() => setModalOpen(false)}
@@ -117,30 +135,27 @@ export default function TaskBoard({ filterUser, currentUser }) {
               setNewTitle('');
               fetchTasks();
             }}
-            ownerId={userId}
+            ownerId={currentUser.user_id}
             initialTitle={newTitle}
           />
         </>
       )}
 
-      {/* Search & Filters */}
+      {/* Filters */}
       <div style={{
-        display:'flex',
-        gap:'1rem',
-        padding:'0 1rem',
-        marginBottom:'1rem'
+        display:'flex', gap:'1rem',
+        padding:'0 1rem', marginBottom:'1rem'
       }}>
         <div style={{ flex:1 }}>
-          <label style={{ display:'block' }}>Search</label>
+          <label>Search</label>
           <input
-            type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{ width:'100%', padding:'0.5rem' }}
           />
         </div>
         <div>
-          <label style={{ display:'block' }}>Type</label>
+          <label>Type</label>
           <select
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value)}
@@ -154,7 +169,7 @@ export default function TaskBoard({ filterUser, currentUser }) {
           </select>
         </div>
         <div>
-          <label style={{ display:'block' }}>Date</label>
+          <label>Date</label>
           <input
             type="date"
             value={dateFilter}
@@ -166,16 +181,12 @@ export default function TaskBoard({ filterUser, currentUser }) {
           setSearch('');
           setTypeFilter('');
           setDateFilter('');
-        }}>
-          Clear
-        </button>
+        }}>Clear</button>
       </div>
 
       {/* Task List */}
       <div style={{
-        flex:1,
-        overflowY:'auto',
-        padding:'0 1rem'
+        flex:1, overflowY:'auto', padding:'0 1rem'
       }}>
         {Object.entries(grouped).map(([date, items]) => (
           <div key={date}>
@@ -184,6 +195,7 @@ export default function TaskBoard({ filterUser, currentUser }) {
               <TaskCard
                 key={t.task_id}
                 task={t}
+                viewingUserId={viewingUserId}
                 onStatusChange={fetchTasks}
               />
             ))}
