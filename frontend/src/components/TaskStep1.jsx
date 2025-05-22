@@ -1,37 +1,70 @@
 // src/components/TaskStep1.jsx
-import React, { useState } from 'react';
+import React from 'react';
 
-export default function TaskStep1({ onNext, defaultData }) {
-  const [description, setDescription] = useState(defaultData.description);
-  const [date, setDate]               = useState(defaultData.deadlineDate);
-  const [time, setTime]               = useState(defaultData.deadlineTime);
+export default function TaskStep1({ values = {}, onChange, onNext }) {
+  const {
+    title = '',
+    description = '',
+    deadline = ''
+  } = values;
 
   return (
-    <div>
-      <h2>{defaultData.title}</h2>
-      <div style={{ display:'flex', gap:'1rem', marginBottom:'1rem' }}>
+    <div style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
+      <h2>Step 1: Details & Schedule</h2>
+
+      {/* Title (read-only) */}
+      <div>
+        <label style={{ display:'block', marginBottom:'0.25rem' }}>
+          Title
+        </label>
         <input
-          type="date"
-          value={date}
-          onChange={e => setDate(e.target.value)}
-          required
-        />
-        <input
-          type="time"
-          value={time}
-          onChange={e => setTime(e.target.value)}
-          required
+          type="text"
+          value={title}
+          readOnly
+          style={{
+            width:'100%',
+            padding:'0.5rem',
+            boxSizing:'border-box',
+            background:'#eee',
+            cursor:'not-allowed'
+          }}
         />
       </div>
-      <textarea
-        rows={5}
-        placeholder="Enter Description"
-        value={description}
-        onChange={e => setDescription(e.target.value)}
-        style={{ width:'100%' }}
-      />
-      <button onClick={() => onNext({ description, deadlineDate: date, deadlineTime: time })}>
-        Enter
+
+      {/* Description */}
+      <div>
+        <label style={{ display:'block', marginBottom:'0.25rem' }}>
+          Description
+        </label>
+        <textarea
+          value={description}
+          onChange={e => onChange({ description: e.target.value })}
+          rows={3}
+          style={{ width:'100%', padding:'0.5rem', boxSizing:'border-box' }}
+        />
+      </div>
+
+      {/* Deadline */}
+      <div>
+        <label style={{ display:'block', marginBottom:'0.25rem' }}>
+          Deadline <span style={{ color:'red' }}>*</span>
+        </label>
+        <input
+          type="datetime-local"
+          value={deadline}
+          onChange={e => onChange({ deadline: e.target.value })}
+          required
+          style={{ width:'100%', padding:'0.5rem', boxSizing:'border-box' }}
+        />
+      </div>
+
+      {/* Next button */}
+      <button
+        onClick={onNext}
+        disabled={!deadline}
+        style={{ alignSelf:'flex-end', padding:'0.5rem 1rem' }}
+      >
+        Next →
       </button>
     </div>
   );

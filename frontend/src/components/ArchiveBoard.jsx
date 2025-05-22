@@ -1,10 +1,10 @@
 // src/components/ArchiveBoard.jsx
 import React, { useState, useEffect, useCallback, useContext } from 'react';
-import TaskCard                  from './TaskCard';
+import TaskCard                    from './TaskCard';
 import { getArchivedTasksForUser } from '../api/tasks';
-import { getSupervisees }        from '../api/users';
-import { AuthContext }           from '../AuthContext';
-import { getTaskColor }          from '../utils/getTaskColor';
+import { getSupervisees }          from '../api/users';
+import { AuthContext }             from '../AuthContext';
+import { getTaskColor }            from '../utils/getTaskColor';
 
 export default function ArchiveBoard({ filterUser, currentUser }) {
   const { user } = useContext(AuthContext);
@@ -17,11 +17,10 @@ export default function ArchiveBoard({ filterUser, currentUser }) {
   const [dateFilter, setDateFilter]     = useState('');
   const [superviseeIds, setSuperviseeIds] = useState([]);
 
-  // Whose archive we view
   const viewingUserId = filterUser?.user_id || currentUser.user_id;
 
   useEffect(() => {
-    if (user.role !== 'manager' && user.role !== 'hr') {
+    if (!['manager','hr'].includes(user.role)) {
       getSupervisees(user.user_id)
         .then(list => setSuperviseeIds(list.map(u => u.user_id)))
         .catch(console.error);
@@ -53,11 +52,9 @@ export default function ArchiveBoard({ filterUser, currentUser }) {
     return () => { clearTimeout(tId); clearInterval(iId); };
   }, [fetchArchive]);
 
-  // Guard
   const viewingOther = viewingUserId !== currentUser.user_id;
   const allowed = !viewingOther
-    || user.role === 'manager'
-    || user.role === 'hr'
+    || ['manager','hr'].includes(user.role)
     || superviseeIds.includes(viewingUserId);
   if (!allowed) {
     return (
@@ -67,12 +64,13 @@ export default function ArchiveBoard({ filterUser, currentUser }) {
     );
   }
 
-  // Annotate
+  // Annotate expired
   let archived = tasks.map(t => ({
     ...t,
     wasExpired: new Date(t.deadline) < now
   }));
 
+  // Filters
   if (search) {
     archived = archived.filter(t =>
       t.title.toLowerCase().includes(search.toLowerCase())
@@ -98,32 +96,35 @@ export default function ArchiveBoard({ filterUser, currentUser }) {
     );
   }
 
-  // Group
+  // Group by date
   const grouped = archived.reduce((acc, t) => {
-    const d = new Date(t.deadline).toLocaleDateString();
-    (acc[d] = acc[d] || []).push(t);
+    const key = new Date(t.deadline).toLocaleDateString();
+    (acc[key] = acc[key] || []).push(t);
     return acc;
   }, {});
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
-      <h3 style={{ padding:'0 1rem' }}>Archive</h3>
+      <div style={{ padding:'0 1rem' }}>
+        <h3>Archive</h3>
+      </div>
+
+      {/* Search */}
+      <div style={{ display:'flex', flexDirection:'column', padding:'0 1rem', marginBottom:'1rem' }}>
+        <label style={{ fontSize:'0.9rem' }}>Search</label>
+        <input
+          type="text"
+          placeholder="Search archive…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{ padding:'0.5rem' }}
+        />
+      </div>
 
       {/* Filters */}
-      <div style={{
-        display:'flex', gap:'1rem',
-        padding:'0 1rem', margin:'0.5rem 0'
-      }}>
-        <div>
-          <label>Search</label>
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ padding:'0.5rem', margin:'0.25rem 0' }}
-          />
-        </div>
-        <div>
-          <label>Status</label>
+      <div style={{ display:'flex', gap:'1rem', padding:'0 1rem', marginBottom:'1rem' }}>
+        <div style={{ flex:1, display:'flex', flexDirection:'column' }}>
+          <label style={{ fontSize:'0.9rem' }}>Status</label>
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
@@ -135,8 +136,8 @@ export default function ArchiveBoard({ filterUser, currentUser }) {
             <option value="Incomplete">Incomplete</option>
           </select>
         </div>
-        <div>
-          <label>Type</label>
+        <div style={{ flex:1, display:'flex', flexDirection:'column' }}>
+          <label style={{ fontSize:'0.9rem' }}>Type</label>
           <select
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value)}
@@ -149,37 +150,37 @@ export default function ArchiveBoard({ filterUser, currentUser }) {
             <option value="eliminate">Eliminate</option>
           </select>
         </div>
-        <div>
-          <label>Date</label>
-          <input
-            type="date"
-            value={dateFilter}
-            onChange={e => setDateFilter(e.target.value)}
-            style={{ padding:'0.5rem' }}
-          />
+        <div style={{ flex:1, display:'flex', flexDirection:'column' }}>
+          <label style={{ fontSize:'0.9rem' }}>Date</label>
+          <div style={{ display:'flex', gap:'0.5rem' }}>
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={e => setDateFilter(e.target.value)}
+              style={{ padding:'0.5rem', flex:1 }}
+            />
+            <button
+              onClick={() => setDateFilter('')}
+              style={{ padding:'0 0.75rem' }}
+            >
+              Clear
+            </button>
+          </div>
         </div>
-        <button onClick={() => {
-          setSearch('');
-          setStatusFilter('');
-          setTypeFilter('');
-          setDateFilter('');
-        }}>Clear</button>
       </div>
 
-      {/* List */}
-      <div style={{
-        flex:1, overflowY:'auto', padding:'0 1rem'
-      }}>
+      {/* Archived Task List */}
+      <div style={{ flex:1, overflowY:'auto', padding:'0 1rem' }}>
         {Object.entries(grouped).map(([date, items]) => (
           <div key={date}>
             <h4 style={{ margin:'1rem 0 0.5rem' }}>{date}</h4>
-            {items.map(t => (
+            {items.map(task => (
               <TaskCard
-                key={t.task_id}
-                task={t}
+                key={task.task_id}
+                task={task}
                 viewingUserId={viewingUserId}
                 isArchived
-                wasExpired={t.wasExpired}
+                wasExpired={task.wasExpired}
                 onStatusChange={fetchArchive}
               />
             ))}

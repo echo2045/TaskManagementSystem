@@ -1,64 +1,60 @@
-import { useState } from 'react';
+// src/components/TaskStep2.jsx
+import React from 'react';
 
-function TaskStep2({ onSubmit, defaultData }) {
-  const [importance, setImportance] = useState(defaultData.importance);
-  const [urgency, setUrgency] = useState(defaultData.urgency);
-
-  const sliderWidth = '80%'; // consistent width for labels + slider
+function TaskStep2({
+  values = {},
+  onChange,
+  onBack,
+  onConfirm,
+  loading
+}) {
+  const { importance = 3, urgency = 3 } = values;
 
   return (
-    <div>
-      <h2>{defaultData.title}</h2>
+    <div style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
+      <h2>Step 2: Priority</h2>
 
-      {/* Importance Slider */}
-      <div style={{ marginBottom: '2rem' }}>
-        <p>How Important is the task?</p>
-        <div style={{ width: sliderWidth, margin: '0 auto' }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontSize: '0.9rem',
-            marginBottom: '0.25rem'
-          }}>
-            {[1, 2, 3, 4, 5].map(n => <span key={n}>{n}</span>)}
-          </div>
-          <input
-            type="range"
-            min="1"
-            max="5"
-            value={importance}
-            onChange={(e) => setImportance(+e.target.value)}
-            style={{ width: '100%' }}
-          />
-        </div>
-      </div>
-
-      {/* Urgency Slider */}
+      {/* Importance slider */}
       <div>
-        <p>How Urgent is the task?</p>
-        <div style={{ width: sliderWidth, margin: '0 auto' }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontSize: '0.9rem',
-            marginBottom: '0.25rem'
-          }}>
-            {[1, 2, 3, 4, 5].map(n => <span key={n}>{n}</span>)}
-          </div>
-          <input
-            type="range"
-            min="1"
-            max="5"
-            value={urgency}
-            onChange={(e) => setUrgency(+e.target.value)}
-            style={{ width: '100%' }}
-          />
-        </div>
+        <label style={{ display:'block', marginBottom:'0.25rem' }}>
+          Importance: {importance}
+        </label>
+        <input
+          type="range"
+          min={1} max={5}
+          value={importance}
+          onChange={e => onChange({ importance: +e.target.value })}
+          style={{ width:'100%' }}
+        />
       </div>
 
-      <button onClick={() => onSubmit({ importance, urgency })} style={{ marginTop: '1rem' }}>
-        Confirm
-      </button>
+      {/* Urgency slider */}
+      <div>
+        <label style={{ display:'block', marginBottom:'0.25rem' }}>
+          Urgency: {urgency}
+        </label>
+        <input
+          type="range"
+          min={1} max={5}
+          value={urgency}
+          onChange={e => onChange({ urgency: +e.target.value })}
+          style={{ width:'100%' }}
+        />
+      </div>
+
+      {/* Back / Confirm */}
+      <div style={{ display:'flex', justifyContent:'space-between', marginTop:'1rem' }}>
+        <button onClick={onBack} style={{ padding:'0.5rem 1rem' }}>
+          ← Back
+        </button>
+        <button
+          onClick={onConfirm}
+          disabled={loading}
+          style={{ padding:'0.5rem 1rem' }}
+        >
+          {loading ? 'Saving…' : 'Confirm'}
+        </button>
+      </div>
     </div>
   );
 }

@@ -14,9 +14,8 @@ export default function App() {
   const { user, logout } = useContext(AuthContext);
   const [selectedUser, setSelectedUser] = React.useState(null);
   const [view, setView]                 = React.useState('tasks');
-  const [showNotif, setShowNotif]       = React.useState(false);
 
-  // If not logged in, show Login page (will call AuthContext.login on success)
+  // If not logged in, show Login page
   if (!user) {
     return <Login />;
   }
@@ -43,7 +42,7 @@ export default function App() {
     { key: 'archive',        label: 'Archive' },
     { key: 'allocate',       label: 'Allocate Supervisor' },
     { key: 'addUser',        label: 'Add User' },
-    { key: 'changePassword', label: 'Change Password' }
+    { key: 'changePassword', label: 'Change Password' },
   ];
 
   return (
@@ -57,15 +56,15 @@ export default function App() {
     }}>
       {/* NAV BAR */}
       <nav style={{
-        background:   '#FFFFFF',
-        padding:      '1rem 2rem',
-        display:      'flex',
-        alignItems:   'center',
+        background:    '#FFFFFF',
+        padding:       '1rem 2rem',
+        display:       'flex',
+        alignItems:    'center',
         justifyContent:'space-between',
-        borderBottom: '2px solid #CCCCCC'
+        borderBottom:  '2px solid #CCCCCC'
       }}>
         <h1
-          style={{ margin: 0, fontSize: '2rem', cursor: 'pointer' }}
+          style={{ margin: 0, fontSize: '2rem', cursor: 'pointer', color: '#000' }}
           onClick={() => {
             setSelectedUser(null);
             setView('tasks');
@@ -73,45 +72,18 @@ export default function App() {
         >
           Task Management System
         </h1>
-        <div style={{
-          display:       'flex',
-          alignItems:    'center',
-          gap:           '1rem'
-        }}>
-          <button
-            onClick={() => setShowNotif(v => !v)}
-            style={{
-              background: 'transparent',
-              border:     'none',
-              fontSize:   '1.5rem',
-              cursor:     'pointer'
-            }}
-            aria-label="Toggle notifications"
-          >
-            🔔
-          </button>
-          {showNotif && (
-            <div style={{
-              position:     'absolute',
-              top:          '4rem',
-              right:        '2rem',
-              width:        '300px',
-              maxHeight:    '400px',
-              background:   '#FFE0B2',
-              boxShadow:    '0 2px 8px rgba(0,0,0,0.2)',
-              borderRadius: '4px',
-              overflowY:    'auto',
-              zIndex:       1000
-            }}>
-              <Notifications />
-            </div>
-          )}
+
+        <div style={{ display:'flex', alignItems:'center', gap:'1rem' }}>
+          {/* Black & white bell with red badge */}
+          <Notifications />
+
+          {/* User avatar & name */}
           <div
             style={{
-              display:        'flex',
-              flexDirection:  'column',
-              alignItems:     'center',
-              cursor:         'pointer'
+              display:       'flex',
+              flexDirection: 'column',
+              alignItems:    'center',
+              cursor:        'pointer'
             }}
             onClick={() => {
               setSelectedUser(null);
@@ -137,7 +109,7 @@ export default function App() {
 
       {/* BODY */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* LEFT */}
+        {/* LEFT: People */}
         <PeopleList
           currentUserId={user.user_id}
           selectedUserId={selectedUser?.user_id}
@@ -149,18 +121,18 @@ export default function App() {
 
         {/* CENTER */}
         <main style={{
-          flex:           2, 
-          display:        'flex',
-          flexDirection:  'column',
-          overflow:       'hidden',
-          background:     '#FAFAFA',
-          padding:        '1rem 2rem',
-          boxSizing:      'border-box'
+          flex:          2,
+          display:       'flex',
+          flexDirection: 'column',
+          overflow:      'hidden',
+          background:    '#FAFAFA',
+          padding:       '1rem 2rem',
+          boxSizing:     'border-box'
         }}>
           {renderMain()}
         </main>
 
-        {/* RIGHT */}
+        {/* RIGHT: Links & Logout */}
         <aside style={{
           width:         '250px',
           padding:       '1rem',
@@ -169,22 +141,18 @@ export default function App() {
           flexDirection: 'column',
           boxShadow:     '-2px 0 4px rgba(0,0,0,0.1)'
         }}>
-          <nav style={{
-            display:       'flex',
-            flexDirection: 'column',
-            gap:           '0.5rem'
-          }}>
+          <nav style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
             {links.map(l => (
               <div
                 key={l.key}
                 onClick={() => setView(l.key)}
                 style={{
-                  cursor:      'pointer',
-                  padding:     '0.5rem 1rem',
-                  borderRadius:'4px',
-                  background:  view === l.key ? '#666666' : 'transparent',
-                  color:       view === l.key ? '#fff' : '#000',
-                  fontWeight:  view === l.key ? 'bold' : 'normal'
+                  cursor:       'pointer',
+                  padding:      '0.5rem 1rem',
+                  borderRadius: '4px',
+                  background:   view === l.key ? '#666666' : 'transparent',
+                  color:        view === l.key ? '#fff' : '#000',
+                  fontWeight:   view === l.key ? 'bold' : 'normal'
                 }}
               >
                 {l.label}

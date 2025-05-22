@@ -69,18 +69,19 @@ export default function TaskDetailsModal({
           </span>
         )}
 
-        <p style={{ margin: '0.5rem 0' }}>
-          <strong>Description:</strong><br />
+        <div style={{ margin: '0.5rem 0' }}>
+          <strong>Description:</strong>
           <div style={{
-            background:   '#fff',
-            borderRadius: '4px',
-            padding:      '0.5rem',
-            minHeight:    '100px',
-            whiteSpace:   'pre-wrap'
+            background:  '#fff',
+            borderRadius:'4px',
+            padding:     '0.5rem',
+            minHeight:   '100px',
+            whiteSpace:  'pre-wrap'
           }}>
             {task.description || '—'}
           </div>
-        </p>
+        </div>
+
 
         {type === 'delegate' && (
           <>

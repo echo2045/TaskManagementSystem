@@ -8,6 +8,8 @@ const authenticate  = require('./middleware/auth');
 const userRoutes    = require('./routes/userRoutes');
 const taskRoutes    = require('./routes/taskRoutes');
 
+const notificationRoutes = require('./routes/notificationRoutes');
+
 app.use(cors());
 app.use(express.json());
 
@@ -17,6 +19,8 @@ app.use('/api/auth', authRoutes);
 // Protected routes
 app.use('/api/users', authenticate, userRoutes);
 app.use('/api/tasks', authenticate, taskRoutes);
+
+app.use('/api/notifications', notificationRoutes);
 
 app.get('/', (req, res) => {
   res.send('Task Management System Backend is Running');

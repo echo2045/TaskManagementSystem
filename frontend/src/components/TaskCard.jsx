@@ -9,10 +9,11 @@ import {
 import {
   getAssignees,
   updateTask,
+  updateAssignee,
   deleteTask
 } from '../api/tasks';
-import DelegateModal      from './DelegateModal';
-import TaskDetailsModal   from './TaskDetailsModal';
+import DelegateModal    from './DelegateModal';
+import TaskDetailsModal from './TaskDetailsModal';
 
 export default function TaskCard({
   task,
@@ -36,19 +37,18 @@ export default function TaskCard({
   const viewIsOwner    = viewingUserId === task.owner_id;
   const viewIsAssignee = assignees.some(a => a.user_id === viewingUserId);
 
-  // Base colors
-  const type           = getTaskColor(task.importance, task.urgency);
-  const defaultBorder  = borderColors[type];
-  const defaultInterior= interiorColors[type];
+  // Colors
+  const type            = getTaskColor(task.importance, task.urgency);
+  const defaultBorder   = borderColors[type];
+  const defaultInterior = interiorColors[type];
 
-  // Determine card background under viewingUserId perspective
+  // Card background (assigned user sees “Do” red interior)
   let cardBg = defaultInterior;
   if (type === 'delegate' && viewIsAssignee) {
-    // assigned user sees Do‐red interior
     cardBg = interiorColors['do'];
   }
 
-  // Archive badge data
+  // Archive badge
   let archiveBadge = null;
   if (isArchived) {
     if (task.status === 'completed') {
@@ -60,18 +60,18 @@ export default function TaskCard({
     }
   }
 
-  // Delegate tag style under perspective
+  // Delegate tag style (owner vs viewer)
   let tagStyle = null;
   if (type === 'delegate' && !isArchived) {
     if (viewIsOwner) {
-      const col = assignees.length > 0
-        ? borderColors['do']
-        : defaultBorder;
+      const col = assignees.length > 0 ? borderColors['do'] : defaultBorder;
       tagStyle = {
         background:   'transparent',
         border:       `1px solid ${col}`,
         borderRadius: '12px',
         padding:      '0.25rem 0.75rem',
+        fontSize:     '0.75rem',
+        lineHeight:   '1rem',
         fontWeight:   'bold',
         cursor:       isAuthOwner ? 'pointer' : 'default',
         color:        col
@@ -82,33 +82,29 @@ export default function TaskCard({
         border:       `1px solid ${defaultBorder}`,
         borderRadius: '12px',
         padding:      '0.25rem 0.75rem',
+        fontSize:     '0.75rem',
+        lineHeight:   '1rem',
         fontWeight:   'bold',
         color:        defaultBorder
       };
     }
   }
 
-  // Can toggle completion?
-  let canToggle = false;
-  if (!isArchived) {
-    // in active view, only owner on own tasks
-    canToggle = isAuthOwner && viewingUserId === authUser.user_id;
-  } else {
-    // in archive, only owner on own incomplete tasks
-    canToggle = isAuthOwner
-      && viewingUserId === authUser.user_id
-      && task.status !== 'completed';
-  }
+  // Who can toggle which checkbox?
+  const canOwnerToggleActive  = !isArchived && isAuthOwner && viewingUserId === authUser.user_id;
+  const canOwnerToggleArchive = isArchived && isAuthOwner && viewingUserId === authUser.user_id && task.status !== 'completed';
+  const canAssigneeToggle     = !isArchived && viewIsAssignee && authUser.user_id === viewingUserId;
 
-  const [showDelegate, setShowDelegate] = useState(false);
-  const [showDetails,  setShowDetails]  = useState(false);
-
+  // Handlers
   const handleComplete = async e => {
     e.stopPropagation();
-    if (!canToggle) return;
-    await updateTask(task.task_id, {
-      status: e.target.checked ? 'completed' : 'pending'
-    });
+    if (canOwnerToggleActive || canOwnerToggleArchive) {
+      await updateTask(task.task_id, { status: e.target.checked ? 'completed' : 'pending' });
+    } else if (canAssigneeToggle) {
+      await updateAssignee(task.task_id, authUser.user_id, e.target.checked);
+    } else {
+      return;
+    }
     onStatusChange?.();
   };
 
@@ -119,6 +115,9 @@ export default function TaskCard({
     await deleteTask(task.task_id);
     onStatusChange?.();
   };
+
+  const [showDelegate, setShowDelegate] = useState(false);
+  const [showDetails,  setShowDetails]  = useState(false);
 
   return (
     <>
@@ -137,7 +136,7 @@ export default function TaskCard({
           cursor:         'pointer'
         }}
       >
-        {/* Left: checkbox + title (wider) + owner */}
+        {/* Left: Checkbox, Title, Owner */}
         <div style={{
           display:    'flex',
           alignItems: 'center',
@@ -149,7 +148,7 @@ export default function TaskCard({
             type="checkbox"
             checked={task.status === 'completed'}
             onChange={handleComplete}
-            disabled={!canToggle}
+            disabled={!(canOwnerToggleActive || canOwnerToggleArchive || canAssigneeToggle)}
           />
           <span style={{
             fontWeight:   'bold',
@@ -171,32 +170,21 @@ export default function TaskCard({
           </span>
         </div>
 
-        {/* Right: delegate tag, time, archive badge, delete */}
+        {/* Right: Delegate tag, Badge, Time, Delete */}
         <div style={{
           display:    'flex',
           alignItems: 'center',
           gap:        '0.75rem'
         }}>
           {tagStyle && (
-            isAuthOwner
+            viewIsOwner
               ? <button
                   onClick={e => { e.stopPropagation(); setShowDelegate(true); }}
                   style={tagStyle}
-                >
-                  Delegate
-                </button>
+                >Delegate</button>
               : <span style={tagStyle}>Delegate</span>
           )}
-          <span style={{
-            fontWeight: 'bold',
-            minWidth:   '4ch',
-            textAlign:  'right'
-          }}>
-            {new Date(task.deadline).toLocaleTimeString([], {
-              hour:   '2-digit',
-              minute: '2-digit'
-            })}
-          </span>
+
           {archiveBadge && (
             <span style={{
               display:      'inline-block',
@@ -210,6 +198,18 @@ export default function TaskCard({
               {archiveBadge.text}
             </span>
           )}
+
+          <span style={{
+            fontWeight:'bold',
+            minWidth:'4ch',
+            textAlign:'right'
+          }}>
+            {new Date(task.deadline).toLocaleTimeString([], {
+              hour:   '2-digit',
+              minute: '2-digit'
+            })}
+          </span>
+
           <button
             onClick={handleDelete}
             style={{

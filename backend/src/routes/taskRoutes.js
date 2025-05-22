@@ -3,7 +3,7 @@ const express = require('express');
 const router  = express.Router();
 const {
   getAllTasks,
-  getArchivedTasks,
+  getArchivedTasksForUser,
   createTask,
   updateTask,
   deleteTask,
@@ -14,7 +14,7 @@ const {
 
 // Now these are **relative** to /api/tasks
 router.get   ('/',                   getAllTasks);
-router.get   ('/archive',            getArchivedTasks);
+router.get   ('/archive',            getArchivedTasksForUser);
 router.post  ('/',                   createTask);
 router.patch ('/:id',                updateTask);
 router.delete('/:id',                deleteTask);
