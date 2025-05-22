@@ -148,6 +148,7 @@ export default function TaskCard({
             type="checkbox"
             checked={task.status === 'completed'}
             onChange={handleComplete}
+            onClick={(e) => e.stopPropagation()} 
             disabled={!(canOwnerToggleActive || canOwnerToggleArchive || canAssigneeToggle)}
           />
           <span style={{

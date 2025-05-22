@@ -30,7 +30,7 @@ export const getArchivedTasksForUser = userId =>
 
 // ── CRUD on Tasks ─────────────────────────────────────────────────────────
 export const createTask  = payload => API.post('/tasks', payload).then(r => r.data);
-export const updateTask  = (taskId, data) => API.put(`/tasks/${taskId}`, data).then(r => r.data);
+export const updateTask  = (taskId, data) => API.patch(`/tasks/${taskId}`, data).then(r => r.data);
 export const deleteTask  = taskId => API.delete(`/tasks/${taskId}`).then(r => r.data);
 
 // ── Delegation Endpoints ─────────────────────────────────────────────────
