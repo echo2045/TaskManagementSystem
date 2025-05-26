@@ -1,4 +1,3 @@
-// src/components/TaskCard.jsx
 import React, { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../AuthContext';
 import {
@@ -12,7 +11,7 @@ import {
   updateAssignee,
   deleteTask
 } from '../api/tasks';
-import DelegateModal    from './DelegateModal';
+import DelegateModal from './DelegateModal';
 import TaskDetailsModal from './TaskDetailsModal';
 
 export default function TaskCard({
@@ -23,9 +22,8 @@ export default function TaskCard({
   onStatusChange
 }) {
   const { user: authUser } = useContext(AuthContext);
-  const isAuthOwner        = authUser.user_id === task.owner_id;
+  const isAuthOwner = authUser.user_id === task.owner_id;
 
-  // Load assignees for delegate logic
   const [assignees, setAssignees] = useState([]);
   useEffect(() => {
     if (getTaskColor(task.importance, task.urgency) === 'delegate') {
@@ -33,22 +31,18 @@ export default function TaskCard({
     }
   }, [task.task_id]);
 
-  // Perspective flags
-  const viewIsOwner    = viewingUserId === task.owner_id;
+  const viewIsOwner = viewingUserId === task.owner_id;
   const viewIsAssignee = assignees.some(a => a.user_id === viewingUserId);
 
-  // Colors
-  const type            = getTaskColor(task.importance, task.urgency);
-  const defaultBorder   = borderColors[type];
+  const type = getTaskColor(task.importance, task.urgency);
+  const defaultBorder = borderColors[type];
   const defaultInterior = interiorColors[type];
 
-  // Card background (assigned user sees “Do” red interior)
   let cardBg = defaultInterior;
   if (type === 'delegate' && viewIsAssignee) {
     cardBg = interiorColors['do'];
   }
 
-  // Archive badge
   let archiveBadge = null;
   if (isArchived) {
     if (task.status === 'completed') {
@@ -60,42 +54,26 @@ export default function TaskCard({
     }
   }
 
-  // Delegate tag style (owner vs viewer)
   let tagStyle = null;
   if (type === 'delegate' && !isArchived) {
-    if (viewIsOwner) {
-      const col = assignees.length > 0 ? borderColors['do'] : defaultBorder;
-      tagStyle = {
-        background:   'transparent',
-        border:       `1px solid ${col}`,
-        borderRadius: '12px',
-        padding:      '0.25rem 0.75rem',
-        fontSize:     '0.75rem',
-        lineHeight:   '1rem',
-        fontWeight:   'bold',
-        cursor:       isAuthOwner ? 'pointer' : 'default',
-        color:        col
-      };
-    } else {
-      tagStyle = {
-        background:   'transparent',
-        border:       `1px solid ${defaultBorder}`,
-        borderRadius: '12px',
-        padding:      '0.25rem 0.75rem',
-        fontSize:     '0.75rem',
-        lineHeight:   '1rem',
-        fontWeight:   'bold',
-        color:        defaultBorder
-      };
-    }
+    const col = assignees.length > 0 ? borderColors['do'] : defaultBorder;
+    tagStyle = {
+      background: 'transparent',
+      border: `1px solid ${col}`,
+      borderRadius: '12px',
+      padding: '0.25rem 0.75rem',
+      fontSize: '0.75rem',
+      lineHeight: '1rem',
+      fontWeight: 'bold',
+      cursor: isAuthOwner ? 'pointer' : 'default',
+      color: col
+    };
   }
 
-  // Who can toggle which checkbox?
-  const canOwnerToggleActive  = !isArchived && isAuthOwner && viewingUserId === authUser.user_id;
+  const canOwnerToggleActive = !isArchived && isAuthOwner && viewingUserId === authUser.user_id;
   const canOwnerToggleArchive = isArchived && isAuthOwner && viewingUserId === authUser.user_id && task.status !== 'completed';
-  const canAssigneeToggle     = !isArchived && viewIsAssignee && authUser.user_id === viewingUserId;
+  const canAssigneeToggle = !isArchived && viewIsAssignee && authUser.user_id === viewingUserId;
 
-  // Handlers
   const handleComplete = async e => {
     e.stopPropagation();
     if (canOwnerToggleActive || canOwnerToggleArchive) {
@@ -117,65 +95,100 @@ export default function TaskCard({
   };
 
   const [showDelegate, setShowDelegate] = useState(false);
-  const [showDetails,  setShowDetails]  = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+
+  const scopeTag = task.project_id
+    ? 'project'
+    : task.area_id
+    ? 'area'
+    : null;
 
   return (
     <>
       <div
         onClick={() => setShowDetails(true)}
         style={{
-          border:        `2px solid ${defaultBorder}`,
-          background:     cardBg,
-          color:          '#000',
-          padding:        '0.75rem 1rem',
-          marginBottom:   '0.5rem',
-          borderRadius:   '6px',
-          display:        'flex',
-          justifyContent: 'space-between',
-          alignItems:     'center',
-          cursor:         'pointer'
+          border: `2px solid ${defaultBorder}`,
+          background: cardBg,
+          color: '#000',
+          padding: '0.75rem 1rem',
+          marginBottom: '0.5rem',
+          borderRadius: '6px',
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+          cursor: 'pointer',
+          gap: '1rem'
         }}
       >
-        {/* Left: Checkbox, Title, Owner */}
+        {/* Left column: checkbox + title + owner */}
         <div style={{
-          display:    'flex',
+          display: 'flex',
           alignItems: 'center',
-          gap:        '0.75rem',
-          flex:       1,
-          overflow:   'hidden'
+          gap: '0.75rem',
+          flex: 3,
+          minWidth: 0,
+          overflow: 'hidden'
         }}>
           <input
             type="checkbox"
             checked={task.status === 'completed'}
             onChange={handleComplete}
-            onClick={(e) => e.stopPropagation()} 
+            onClick={(e) => e.stopPropagation()}
             disabled={!(canOwnerToggleActive || canOwnerToggleArchive || canAssigneeToggle)}
           />
           <span style={{
-            fontWeight:   'bold',
-            whiteSpace:   'nowrap',
-            overflow:     'hidden',
+            fontWeight: 'bold',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
             textOverflow: 'ellipsis',
-            maxWidth:     '60%'
+            maxWidth: '40%'
           }}>
             {task.title}
           </span>
           <span style={{
-            whiteSpace:   'nowrap',
-            overflow:     'hidden',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
             textOverflow: 'ellipsis',
-            fontSize:     '0.85rem',
-            maxWidth:     '25%'
+            fontSize: '0.85rem',
+            color: '#555',
+            maxWidth: '30%'
           }}>
             {task.owner_name}
           </span>
         </div>
 
-        {/* Right: Delegate tag, Badge, Time, Delete */}
+        {/* Center column: tag */}
         <div style={{
-          display:    'flex',
+          flex: 1,
+          textAlign: 'center',
+          display: 'flex',
+          justifyContent: 'center'
+        }}>
+          {scopeTag && (
+  <span style={{
+    background:   'transparent',
+    border:       '1px solid #555',
+    borderRadius: '12px',
+    padding:      '0.25rem 0.75rem',
+    fontSize:     '0.75rem',
+    lineHeight:   '1rem',
+    fontWeight:   'bold',
+    color:        '#555'
+  }}>
+    {scopeTag}
+  </span>
+)}
+
+        </div>
+
+        {/* Right column: delegate, badge, time, delete */}
+        <div style={{
+          display: 'flex',
           alignItems: 'center',
-          gap:        '0.75rem'
+          gap: '0.75rem',
+          justifyContent: 'flex-end',
+          flex: 2
         }}>
           {tagStyle && (
             viewIsOwner
@@ -188,25 +201,25 @@ export default function TaskCard({
 
           {archiveBadge && (
             <span style={{
-              display:      'inline-block',
-              background:   'transparent',
-              border:       `1px solid ${archiveBadge.color}`,
+              display: 'inline-block',
+              background: 'transparent',
+              border: `1px solid ${archiveBadge.color}`,
               borderRadius: '12px',
-              padding:      '0.2rem 0.5rem',
-              color:        archiveBadge.color,
-              fontSize:     '0.75rem'
+              padding: '0.2rem 0.5rem',
+              color: archiveBadge.color,
+              fontSize: '0.75rem'
             }}>
               {archiveBadge.text}
             </span>
           )}
 
           <span style={{
-            fontWeight:'bold',
-            minWidth:'4ch',
-            textAlign:'right'
+            fontWeight: 'bold',
+            minWidth: '4ch',
+            textAlign: 'right'
           }}>
             {new Date(task.deadline).toLocaleTimeString([], {
-              hour:   '2-digit',
+              hour: '2-digit',
               minute: '2-digit'
             })}
           </span>
@@ -214,10 +227,10 @@ export default function TaskCard({
           <button
             onClick={handleDelete}
             style={{
-              background:'transparent',
-              border:'none',
-              fontSize:'1.2rem',
-              cursor:isAuthOwner ? 'pointer' : 'default'
+              background: 'transparent',
+              border: 'none',
+              fontSize: '1.2rem',
+              cursor: isAuthOwner ? 'pointer' : 'default'
             }}
           >
             🗑
