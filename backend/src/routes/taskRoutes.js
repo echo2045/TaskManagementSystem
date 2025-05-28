@@ -1,6 +1,7 @@
-// backend/src/routes/taskRoutes.js
 const express = require('express');
-const router  = express.Router();
+const router = express.Router();
+const authenticate = require('../middleware/auth');
+
 const {
   getAllTasks,
   getArchivedTasksForUser,
@@ -12,16 +13,16 @@ const {
   unassignTask
 } = require('../controllers/taskController');
 
-// Now these are **relative** to /api/tasks
-router.get   ('/',                   getAllTasks);
-router.get   ('/archive',            getArchivedTasksForUser);
-router.post  ('/',                   createTask);
-router.patch ('/:id',                updateTask);
-router.delete('/:id',                deleteTask);
+// Main task endpoints
+router.get('/', authenticate, getAllTasks);
+router.get('/archive/:id', authenticate, getArchivedTasksForUser);  // ✅ Add this line
+router.post('/', authenticate, createTask);
+router.patch('/:id', authenticate, updateTask);
+router.delete('/:id', authenticate, deleteTask);
 
-// Delegation endpoints
-router.get   ('/:id/assignees',           getTaskAssignees);
-router.post  ('/:id/assignees',           assignTask);
-router.delete('/:id/assignees/:userId',   unassignTask);
+// Assignee endpoints
+router.get('/:id/assignees', authenticate, getTaskAssignees);
+router.post('/:id/assignees', authenticate, assignTask);
+router.delete('/:id/assignees/:userId', authenticate, unassignTask);
 
 module.exports = router;

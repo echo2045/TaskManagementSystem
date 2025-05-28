@@ -1,8 +1,17 @@
+// backend/src/routes/projectRoutes.js
 const express = require('express');
 const router = express.Router();
-const { createProject, getAllProjects } = require('../controllers/projectController');
+const authenticate = require('../middleware/auth');
+const {
+  createProject,
+  getAllProjects,
+  markProjectComplete,
+  deleteProject
+} = require('../controllers/projectController');
 
-router.post('/', createProject);
-router.get('/', getAllProjects);
+router.post('/', authenticate, createProject);
+router.get('/', authenticate, getAllProjects);
+router.patch('/:id/complete', authenticate, markProjectComplete);
+router.delete('/:id', authenticate, deleteProject);
 
 module.exports = router;

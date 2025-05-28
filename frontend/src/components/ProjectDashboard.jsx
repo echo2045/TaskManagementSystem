@@ -1,3 +1,4 @@
+// src/components/ProjectDashboard.jsx
 import React, { useState, useEffect, useCallback, useContext } from 'react';
 import TaskCard        from './TaskCard';
 import CreateTaskModal from './CreateTaskModal';
@@ -6,7 +7,7 @@ import { getSupervisees }  from '../api/users';
 import { AuthContext }     from '../AuthContext';
 import { getTaskColor }    from '../utils/getTaskColor';
 
-export default function TaskBoard({ filterUser }) {
+export default function ProjectDashboard({ filterUser }) {
   const { user } = useContext(AuthContext);
 
   const [tasks, setTasks]           = useState([]);
@@ -19,10 +20,8 @@ export default function TaskBoard({ filterUser }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [newTitle, setNewTitle]   = useState('');
 
-  // Determine whose tasks to show
   const viewingUserId = filterUser?.user_id || user.user_id;
 
-  // Load supervisees
   useEffect(() => {
     if (!['manager','hr'].includes(user.role)) {
       getSupervisees(user.user_id)
@@ -31,13 +30,9 @@ export default function TaskBoard({ filterUser }) {
     }
   }, [user]);
 
-  // Fetch tasks
   const fetchTasks = useCallback(() => {
     getTasksForUser(viewingUserId)
-      .then(data => {
-        console.log('Fetched tasks:', data);
-        setTasks(Array.isArray(data) ? data : []);
-      })
+      .then(data => setTasks(Array.isArray(data) ? data : []))
       .catch(err => {
         console.error(err);
         setTasks([]);
@@ -49,9 +44,7 @@ export default function TaskBoard({ filterUser }) {
     let tId, iId;
     const align = () => {
       const s = new Date().getSeconds();
-      const delay = s < 1 ? (1 - s) * 1000
-                  : s < 31 ? (31 - s) * 1000
-                  : (61 - s) * 1000;
+      const delay = s < 1 ? (1 - s) * 1000 : s < 31 ? (31 - s) * 1000 : (61 - s) * 1000;
       tId = setTimeout(() => {
         setNow(new Date());
         fetchTasks();
@@ -65,26 +58,20 @@ export default function TaskBoard({ filterUser }) {
     return () => { clearTimeout(tId); clearInterval(iId); };
   }, [fetchTasks]);
 
-  // Guard: only supervisor or manager/HR
   const viewingOther = viewingUserId !== user.user_id;
   const allowed = !viewingOther
     || ['manager','hr'].includes(user.role)
     || superviseeIds.includes(viewingUserId);
 
-  if (!allowed) {
-    return <div style={{ padding:'2rem', color:'#000' }}>You are not this person's supervisor.</div>;
-  }
+  if (!allowed) return <div style={{ padding:'2rem' }}>You are not this person's supervisor.</div>;
 
-  // Safe tasks array
-  const safeTasks = Array.isArray(tasks) ? tasks : [];
-
-  // Filter: only show if owner or currently assigned
-  const visible = safeTasks
+  const visible = tasks
     .filter(t => {
       const assignedIds = Array.isArray(t.assignees) ? t.assignees.map(a => a.user_id) : [];
-      return t.status === 'pending'
-        && new Date(t.deadline) >= now
-        && (t.owner_id === viewingUserId || assignedIds.includes(viewingUserId));
+      return t.project_id &&
+        t.status === 'pending' &&
+        new Date(t.deadline) >= now &&
+        (t.owner_id === viewingUserId || assignedIds.includes(viewingUserId));
     })
     .filter(t => {
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
@@ -93,14 +80,12 @@ export default function TaskBoard({ filterUser }) {
       return true;
     });
 
-  // Group by date
   const grouped = visible.reduce((acc, t) => {
     const key = new Date(t.deadline).toLocaleDateString();
     (acc[key] = acc[key] || []).push(t);
     return acc;
   }, {});
 
-  // Can only create your own
   const canCreate = viewingUserId === user.user_id;
 
   return (
@@ -126,27 +111,15 @@ export default function TaskBoard({ filterUser }) {
         </>
       )}
 
-      {/* Filters Section */}
+      {/* Filters */}
       <div style={{ display:'flex', gap:'1.5rem', padding:'0 1rem', marginBottom:'1rem' }}>
-        {/* Search */}
-        <div style={{ flex:2, display:'flex', flexDirection:'column' }}>
-          <label style={{ fontSize:'0.9rem' }}>Search</label>
-          <input
-            type="text"
-            placeholder="Search tasks…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ padding:'0.5rem' }}
-          />
+        <div style={{ flex:2 }}>
+          <label>Search</label>
+          <input value={search} onChange={e => setSearch(e.target.value)} style={{ width:'100%' }} />
         </div>
-        {/* Type */}
-        <div style={{ flex:1, display:'flex', flexDirection:'column' }}>
-          <label style={{ fontSize:'0.9rem' }}>Type</label>
-          <select
-            value={typeFilter}
-            onChange={e => setTypeFilter(e.target.value)}
-            style={{ padding:'0.5rem' }}
-          >
+        <div>
+          <label>Type</label>
+          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
             <option value="">All</option>
             <option value="do">Do</option>
             <option value="schedule">Schedule</option>
@@ -154,18 +127,9 @@ export default function TaskBoard({ filterUser }) {
             <option value="eliminate">Eliminate</option>
           </select>
         </div>
-        {/* Date */}
-        <div style={{ flex:1, display:'flex', flexDirection:'column' }}>
-          <label style={{ fontSize:'0.9rem' }}>Date</label>
-          <div style={{ display:'flex', gap:'0.5rem' }}>
-            <input
-              type="date"
-              value={dateFilter}
-              onChange={e => setDateFilter(e.target.value)}
-              style={{ padding:'0.5rem', flex:1 }}
-            />
-            <button onClick={() => setDateFilter('')} style={{ padding:'0 0.75rem' }}>Clear</button>
-          </div>
+        <div>
+          <label>Date</label>
+          <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} />
         </div>
       </div>
 
@@ -173,15 +137,19 @@ export default function TaskBoard({ filterUser }) {
       <div style={{ flex:1, overflowY:'auto', padding:'0 1rem' }}>
         {Object.entries(grouped).map(([date, items]) => (
           <div key={date}>
-            <h4 style={{ margin:'1rem 0 0.5rem' }}>{date}</h4>
+            <h4>{date}</h4>
             {items.map(t => (
-              <TaskCard key={t.task_id} task={t} viewingUserId={viewingUserId} onStatusChange={fetchTasks} />
+              <TaskCard
+                key={t.task_id}
+                task={t}
+                viewingUserId={viewingUserId}
+                onStatusChange={fetchTasks}
+                showProjectNameInstead={true}
+              />
             ))}
           </div>
         ))}
-        {visible.length === 0 && (
-          <p style={{ color:'#666', padding:'0 1rem' }}>No tasks to display.</p>
-        )}
+        {visible.length === 0 && <p>No tasks to display.</p>}
       </div>
     </div>
   );

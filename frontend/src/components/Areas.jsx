@@ -1,45 +1,145 @@
-import React, { useContext, useState } from 'react';
+// src/components/Areas.jsx
+import React, { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '../AuthContext';
-import { createArea } from '../api/areas';
+import {
+  createArea,
+  getAllAreas,
+  markAreaComplete,
+  deleteArea
+} from '../api/areas';
+import AreaDashboard from './AreaDashboard';
 
 export default function Areas() {
   const { user } = useContext(AuthContext);
-  const [name, setName] = useState('');
+  const [areas, setAreas] = useState([]);
+  const [newName, setNewName] = useState('');
   const [message, setMessage] = useState('');
+  const [search, setSearch] = useState('');
+  const [showActive, setShowActive] = useState(true);
 
-  if (!user || user.role !== 'manager') {
-    return <div style={{ padding: '2rem' }}>Access denied. Managers only.</div>;
-  }
-
-  const handleSubmit = async e => {
-    e.preventDefault();
-    setMessage('');
+  const fetch = async () => {
     try {
-      await createArea(name, user.user_id);
-      setMessage(`Area "${name}" created.`);
-      setName('');
+      const data = await getAllAreas();
+      setAreas(data);
     } catch (err) {
-      setMessage(err.response?.data?.error || 'Error creating area');
+      console.error('Error loading areas', err);
     }
   };
 
+  useEffect(() => {
+    fetch();
+  }, []);
+
+  const handleCreate = async e => {
+    e.preventDefault();
+    setMessage('');
+    try {
+      await createArea(newName, user.user_id);
+      setNewName('');
+      setMessage('Area created');
+      fetch();
+    } catch (err) {
+      setMessage(err.response?.data?.error || 'Error');
+    }
+  };
+
+  const handleToggle = async (id, isCompleted) => {
+    try {
+      await markAreaComplete(id, !isCompleted);
+      fetch();
+    } catch (err) {
+      console.error('Error updating area', err);
+    }
+  };
+
+  const handleDelete = async id => {
+    if (!window.confirm('Delete this area and its tasks?')) return;
+    try {
+      await deleteArea(id);
+      fetch();
+    } catch (err) {
+      console.error('Error deleting area', err);
+    }
+  };
+
+  if (user.role !== 'manager') {
+    return <AreaDashboard />;
+  }
+
+  const filtered = areas
+    .filter(a => (showActive ? !a.is_completed : a.is_completed))
+    .filter(a => a.name.toLowerCase().includes(search.toLowerCase()));
+
   return (
-    <div style={{ padding: '2rem' }}>
-      <h2>Areas</h2>
-      <form onSubmit={handleSubmit} style={{ marginTop: '1rem' }}>
-        <input
-          type="text"
-          placeholder="Area name"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          required
-          style={{ padding: '0.5rem', marginRight: '1rem' }}
-        />
-        <button type="submit" style={{ padding: '0.5rem 1rem' }}>
-          Add Area
-        </button>
-      </form>
-      {message && <p style={{ marginTop: '1rem' }}>{message}</p>}
+    <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      {/* Section 1: Create */}
+      <section>
+        <h2>Add Area</h2>
+        <form onSubmit={handleCreate} style={{ display: 'flex', gap: '1rem' }}>
+          <input
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            required
+            placeholder="New area name"
+            style={{ padding: '0.5rem', flex: 1 }}
+          />
+          <button type="submit">Create</button>
+        </form>
+        {message && <p>{message}</p>}
+      </section>
+
+      {/* Section 2: Manage List */}
+      <section>
+        <h2>Manage Areas</h2>
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+          <input
+            placeholder="Search areas"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ padding: '0.5rem', flex: 2 }}
+          />
+          <button onClick={() => setShowActive(true)} disabled={showActive}>
+            Active
+          </button>
+          <button onClick={() => setShowActive(false)} disabled={!showActive}>
+            Archive
+          </button>
+        </div>
+
+        {filtered.map(a => (
+          <div
+            key={a.area_id}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem',
+              border: '1px solid #ccc',
+              padding: '0.5rem 1rem',
+              borderRadius: '6px',
+              marginBottom: '0.5rem',
+              justifyContent: 'space-between'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+              <input
+                type="checkbox"
+                checked={a.is_completed}
+                onChange={() => handleToggle(a.area_id, a.is_completed)}
+              />
+              <span style={{ fontWeight: 'bold' }}>{a.name}</span>
+              <span style={{ color: '#555', fontStyle: 'italic' }}>({a.created_by_name || ''})</span>
+            </div>
+            <button onClick={() => handleDelete(a.area_id)} style={{ fontSize: '1.2rem' }}>
+              🗑
+            </button>
+          </div>
+        ))}
+      </section>
+
+      {/* Section 3: Dashboard */}
+      <section>
+        <AreaDashboard viewingOwnOnly />
+      </section>
     </div>
   );
 }

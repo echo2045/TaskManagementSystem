@@ -1,43 +1,43 @@
-// src/api/tasks.js
 import axios from 'axios';
 
-const API = axios.create({
-  baseURL: '/api',
-  withCredentials: true,  // if you’re using cookie-based sessions
-});
+const BASE_URL = 'http://localhost:5000/api/tasks';
 
-// On every request, grab the JWT from sessionStorage (AuthContext’s source of truth),
-// and set it as a Bearer token on our custom API instance.
-// This aligns with what AuthContext is doing:
-API.interceptors.request.use(config => {
-  const token = sessionStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+export function createTask(data) {
+  return axios.post(`${BASE_URL}`, data);
+}
 
-// ── Global Active / Archive ───────────────────────────────────────────────
-export const getAllTasks         = () => API.get('/tasks').then(r => r.data);
-export const getArchivedTasks    = () => API.get('/tasks/archive').then(r => r.data);
+export function getTasksForUser() {
+  return axios.get(`${BASE_URL}`).then(res => res.data);
+}
 
-// ── Per-User Active / Archive ─────────────────────────────────────────────
-export const getTasksForUser         = userId => 
-  API.get(`/users/${userId}/tasks`).then(r => r.data);
+export function getArchivedTasksForUser(user_id) {
+  return axios.get(`${BASE_URL}/archive/${user_id}`).then(res => res.data);
+}
 
-export const getArchivedTasksForUser = userId =>
-  API.get(`/users/${userId}/tasks/archive`).then(r => r.data);
+export function updateTask(task_id, updates) {
+  return axios.patch(`${BASE_URL}/${task_id}`, updates);
+}
 
-// ── CRUD on Tasks ─────────────────────────────────────────────────────────
-export const createTask  = payload => API.post('/tasks', payload).then(r => r.data);
-export const updateTask  = (taskId, data) => API.patch(`/tasks/${taskId}`, data).then(r => r.data);
-export const deleteTask  = taskId => API.delete(`/tasks/${taskId}`).then(r => r.data);
+export function deleteTask(task_id) {
+  return axios.delete(`${BASE_URL}/${task_id}`);
+}
 
-// ── Delegation Endpoints ─────────────────────────────────────────────────
-export const getAssignees    = taskId => API.get(`/tasks/${taskId}/assignees`).then(r => r.data);
-export const addAssignee     = (taskId, userId) =>
-  API.post(`/tasks/${taskId}/assignees`, { user_id: userId }).then(r => r.data);
-export const removeAssignee  = (taskId, userId) =>
-  API.delete(`/tasks/${taskId}/assignees/${userId}`).then(r => r.data);
-export const updateAssignee  = (taskId, userId, is_completed) =>
-  API.put(`/tasks/${taskId}/assignees/${userId}`, { is_completed }).then(r => r.data);
+export function getAssignees(task_id) {
+  return axios.get(`${BASE_URL}/${task_id}/assignees`).then(res => res.data);
+}
+
+export function updateAssignee(task_id, user_id, completed) {
+  const url = `${BASE_URL}/${task_id}/assignees`;
+  return completed
+    ? axios.post(url, { user_id })
+    : axios.delete(`${url}/${user_id}`);
+}
+
+// ✅ These are the missing exports your frontend expected:
+export function addAssignee(task_id, user_id) {
+  return axios.post(`${BASE_URL}/${task_id}/assignees`, { user_id });
+}
+
+export function removeAssignee(task_id, user_id) {
+  return axios.delete(`${BASE_URL}/${task_id}/assignees/${user_id}`);
+}

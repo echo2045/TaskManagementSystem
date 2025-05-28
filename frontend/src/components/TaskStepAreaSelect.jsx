@@ -1,13 +1,13 @@
 // src/components/TaskStepAreaSelect.jsx
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { getAllAreas } from '../api/areas';
 
 export default function TaskStepAreaSelect({ values = {}, onChange, onNext }) {
   const [areas, setAreas] = useState([]);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/areas')
-      .then(res => setAreas(res.data))
+    getAllAreas(true) // Fetch only active areas
+      .then(setAreas)
       .catch(err => console.error('Error loading areas', err));
   }, []);
 

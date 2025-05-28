@@ -1,8 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const { createArea, getAllAreas } = require('../controllers/areaController');
+const authenticate = require('../middleware/auth');
+const {
+  createArea,
+  getAllAreas,
+  markAreaComplete,
+  deleteArea
+} = require('../controllers/areaController');
 
-router.post('/', createArea);
-router.get('/', getAllAreas);
+// All routes require authentication
+router.post('/', authenticate, createArea);
+router.get('/', authenticate, getAllAreas);
+router.patch('/:id/complete', authenticate, markAreaComplete);
+router.delete('/:id', authenticate, deleteArea);
 
 module.exports = router;

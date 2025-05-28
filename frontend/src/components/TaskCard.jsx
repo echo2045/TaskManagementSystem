@@ -1,3 +1,4 @@
+// src/components/TaskCard.jsx
 import React, { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../AuthContext';
 import {
@@ -19,7 +20,9 @@ export default function TaskCard({
   viewingUserId,
   isArchived = false,
   wasExpired = false,
-  onStatusChange
+  onStatusChange,
+  showProjectNameInstead = false,
+  showAreaNameInstead = false
 }) {
   const { user: authUser } = useContext(AuthContext);
   const isAuthOwner = authUser.user_id === task.owner_id;
@@ -103,6 +106,15 @@ export default function TaskCard({
     ? 'area'
     : null;
 
+  const truncate = (text, max = 20) =>
+    text.length > max ? text.slice(0, max - 3) + '...' : text;
+
+  const extraName = showProjectNameInstead && task.project_name
+    ? task.project_name
+    : showAreaNameInstead && task.area_name
+    ? task.area_name
+    : null;
+
   return (
     <>
       <div
@@ -121,7 +133,7 @@ export default function TaskCard({
           gap: '1rem'
         }}
       >
-        {/* Left column: checkbox + title + owner */}
+        {/* Left Column */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -137,52 +149,61 @@ export default function TaskCard({
             onClick={(e) => e.stopPropagation()}
             disabled={!(canOwnerToggleActive || canOwnerToggleArchive || canAssigneeToggle)}
           />
-          <span style={{
-            fontWeight: 'bold',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            maxWidth: '40%'
-          }}>
-            {task.title}
-          </span>
-          <span style={{
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            fontSize: '0.85rem',
-            color: '#555',
-            maxWidth: '30%'
-          }}>
-            {task.owner_name}
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '1rem', width: '100%' }}>
+            <span style={{
+              fontWeight: 'bold',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              width: '180px'
+            }}>
+              {task.title}
+            </span>
+            <span style={{
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              fontSize: '0.85rem',
+              color: '#555',
+              width: '130px'
+            }}>
+              {task.owner_name}
+            </span>
+            {extraName && (
+              <span style={{
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                fontSize: '0.8rem',
+                color: '#777',
+                width: '130px'
+              }}>
+                {truncate(extraName, 22)}
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Center column: tag */}
+        {/* Center Tag */}
         <div style={{
           flex: 1,
-          textAlign: 'center',
           display: 'flex',
           justifyContent: 'center'
         }}>
-          {scopeTag && (
-  <span style={{
-    background:   'transparent',
-    border:       '1px solid #555',
-    borderRadius: '12px',
-    padding:      '0.25rem 0.75rem',
-    fontSize:     '0.75rem',
-    lineHeight:   '1rem',
-    fontWeight:   'bold',
-    color:        '#555'
-  }}>
-    {scopeTag}
-  </span>
-)}
-
+          {!showProjectNameInstead && !showAreaNameInstead && scopeTag && (
+            <span style={{
+              fontSize: '0.7rem',
+              background: '#eee',
+              color: '#555',
+              padding: '0.2rem 0.5rem',
+              borderRadius: '8px'
+            }}>
+              {scopeTag}
+            </span>
+          )}
         </div>
 
-        {/* Right column: delegate, badge, time, delete */}
+        {/* Right Column */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -191,13 +212,17 @@ export default function TaskCard({
           flex: 2
         }}>
           {tagStyle && (
-            viewIsOwner
-              ? <button
-                  onClick={e => { e.stopPropagation(); setShowDelegate(true); }}
-                  style={tagStyle}
-                >Delegate</button>
-              : <span style={tagStyle}>Delegate</span>
-          )}
+  viewIsOwner
+    ? <button
+        onClick={e => { e.stopPropagation(); setShowDelegate(true); }}
+        style={tagStyle}
+      >
+        Delegate
+      </button>
+    : <span style={tagStyle}>
+        Delegated by: {task.owner_name}
+      </span>
+)}
 
           {archiveBadge && (
             <span style={{
@@ -212,7 +237,6 @@ export default function TaskCard({
               {archiveBadge.text}
             </span>
           )}
-
           <span style={{
             fontWeight: 'bold',
             minWidth: '4ch',
@@ -223,7 +247,6 @@ export default function TaskCard({
               minute: '2-digit'
             })}
           </span>
-
           <button
             onClick={handleDelete}
             style={{
@@ -247,7 +270,6 @@ export default function TaskCard({
           }}
         />
       )}
-
       {showDetails && (
         <TaskDetailsModal
           task={task}
