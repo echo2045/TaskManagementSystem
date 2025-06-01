@@ -54,16 +54,29 @@ async function createUser(req, res) {
 
 // PATCH /api/users/:id
 // general update (excludes password)
+// PATCH /api/users/:id
 async function updateUser(req, res) {
   const { id } = req.params;
   const fields = [], values = [];
+
+  // Log request for debugging
+  console.log('Received update for user ID:', id);
+  console.log('Request body:', req.body);
+
   Object.entries(req.body).forEach(([k, v], i) => {
-    if (k === 'password') return; // skip here
-    fields.push(`${k} = $${i+1}`);
-    values.push(v);
+    if (k === 'password' || k === 'user_id') return; // Skip password & ID
+    if (v !== undefined && v !== null) {
+      fields.push(`${k} = $${fields.length + 1}`);
+      values.push(v);
+    }
   });
-  if (!fields.length) return res.sendStatus(400);
+
+  if (!fields.length) {
+    return res.status(400).json({ error: 'No valid fields provided for update' });
+  }
+
   values.push(id);
+
   try {
     const { rows } = await pool.query(
       `UPDATE users SET ${fields.join(', ')} WHERE user_id = $${values.length} RETURNING *`,
@@ -72,6 +85,7 @@ async function updateUser(req, res) {
     if (!rows.length) return res.sendStatus(404);
     res.json(rows[0]);
   } catch (err) {
+    console.error('Error updating user:', err.message);
     res.status(500).json({ error: err.message });
   }
 }
@@ -79,6 +93,12 @@ async function updateUser(req, res) {
 // DELETE /api/users/:id
 async function deleteUser(req, res) {
   const { id } = req.params;
+  const isManagerOrHR = req.user.role === 'manager' || req.user.role === 'hr';
+
+  if (!isManagerOrHR) {
+    return res.status(403).json({ error: 'Forbidden: Only Managers or HR can delete users' });
+  }
+
   try {
     await pool.query('DELETE FROM users WHERE user_id = $1', [id]);
     res.sendStatus(204);

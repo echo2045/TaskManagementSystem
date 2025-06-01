@@ -11,6 +11,8 @@ import ChangePassword from './components/ChangePassword';
 import Notifications from './components/Notifications';
 import Projects from './components/Projects';
 import Areas from './components/Areas';
+import DeleteUser from './components/DeleteUser';
+import UpdateUser from './components/UpdateUser';
 
 export default function App() {
   const { user, logout } = useContext(AuthContext);
@@ -31,6 +33,10 @@ export default function App() {
         return <SupervisorAllocation currentUser={user} />;
       case 'addUser':
         return <AddUser />;
+      case 'deleteUser':
+        return <DeleteUser />;
+      case 'updateUser':
+        return <UpdateUser currentUser={user} />;
       case 'changePassword':
         return <ChangePassword userId={user.user_id} />;
       case 'projects':
@@ -42,7 +48,7 @@ export default function App() {
     }
   };
 
-  // Full list of links with role-based condition for allocate/addUser
+  // Full list of links with role-based condition for manager/HR
   const links = [
     { key: 'tasks', label: 'Tasks' },
     { key: 'archive', label: 'Archive' },
@@ -51,9 +57,11 @@ export default function App() {
     ...(user.role === 'manager' || user.role === 'hr'
       ? [
           { key: 'allocate', label: 'Allocate Supervisor' },
-          { key: 'addUser', label: 'Add User' }
+          { key: 'addUser', label: 'Add User' },
+          { key: 'deleteUser', label: 'Delete User' }
         ]
       : []),
+    { key: 'updateUser', label: 'Update User' },
     { key: 'changePassword', label: 'Change Password' }
   ];
 
@@ -165,7 +173,11 @@ export default function App() {
                   fontWeight: view === l.key ? 'bold' : 'normal'
                 }}
               >
-                {l.label}
+                {l.key === 'updateUser'
+                  ? (user.role === 'manager' || user.role === 'hr'
+                      ? 'Update User Info'
+                      : 'Update My Info')
+                  : l.label}
               </div>
             ))}
           </nav>
