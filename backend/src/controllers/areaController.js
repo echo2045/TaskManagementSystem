@@ -20,23 +20,39 @@ const createArea = async (req, res) => {
 
 // GET /api/areas
 // Optionally filter by active/inactive: /api/areas?active=true
+// GET /api/areas
+// Optionally filter by active/inactive: /api/areas?active=true
+// GET /api/areas
+// Optionally filter by active/inactive: /api/areas?active=true
+// GET /api/areas
+// GET /api/areas
 const getAllAreas = async (req, res) => {
   const { active } = req.query;
   try {
-    let query = 'SELECT * FROM areas';
-    let values = [];
+    let query = `
+      SELECT 
+        areas.*, 
+        users.username AS creator_name
+      FROM areas 
+      LEFT JOIN users ON areas.created_by = users.user_id
+    `;
+
     if (active === 'true') {
-      query += ' WHERE is_completed = false';
+      query += ' WHERE areas.is_completed = false';
     } else if (active === 'false') {
-      query += ' WHERE is_completed = true';
+      query += ' WHERE areas.is_completed = true';
     }
-    const result = await pool.query(query, values);
+
+    const result = await pool.query(query);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching areas:', err.message);
     res.status(500).json({ error: 'Could not fetch areas' });
   }
 };
+
+
+
 
 // PATCH /api/areas/:id/complete
 const markAreaComplete = async (req, res) => {

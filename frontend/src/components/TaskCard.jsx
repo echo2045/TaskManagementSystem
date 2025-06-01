@@ -29,9 +29,7 @@ export default function TaskCard({
 
   const [assignees, setAssignees] = useState([]);
   useEffect(() => {
-    if (getTaskColor(task.importance, task.urgency) === 'delegate') {
-      getAssignees(task.task_id).then(setAssignees).catch(console.error);
-    }
+    getAssignees(task.task_id).then(setAssignees).catch(console.error);
   }, [task.task_id]);
 
   const viewIsOwner = viewingUserId === task.owner_id;
@@ -43,34 +41,17 @@ export default function TaskCard({
 
   let cardBg = defaultInterior;
   if (type === 'delegate' && viewIsAssignee) {
-    cardBg = interiorColors['do'];
+    cardBg = interiorColors['do']; // mark as delegated
   }
 
   let archiveBadge = null;
   if (isArchived) {
-    if (task.status === 'completed') {
-      archiveBadge = wasExpired
-        ? { text: 'Late', color: '#FFB74D' }
-        : { text: 'Complete', color: '#4caf50' };
-    } else {
-      archiveBadge = { text: 'Incomplete', color: '#E57373' };
-    }
-  }
-
-  let tagStyle = null;
-  if (type === 'delegate' && !isArchived) {
-    const col = assignees.length > 0 ? borderColors['do'] : defaultBorder;
-    tagStyle = {
-      background: 'transparent',
-      border: `1px solid ${col}`,
-      borderRadius: '12px',
-      padding: '0.25rem 0.75rem',
-      fontSize: '0.75rem',
-      lineHeight: '1rem',
-      fontWeight: 'bold',
-      cursor: isAuthOwner ? 'pointer' : 'default',
-      color: col
-    };
+    archiveBadge =
+      task.status === 'completed'
+        ? wasExpired
+          ? { text: 'Late', color: '#FFB74D' }
+          : { text: 'Complete', color: '#4caf50' }
+        : { text: 'Incomplete', color: '#E57373' };
   }
 
   const canOwnerToggleActive = !isArchived && isAuthOwner && viewingUserId === authUser.user_id;
@@ -83,9 +64,7 @@ export default function TaskCard({
       await updateTask(task.task_id, { status: e.target.checked ? 'completed' : 'pending' });
     } else if (canAssigneeToggle) {
       await updateAssignee(task.task_id, authUser.user_id, e.target.checked);
-    } else {
-      return;
-    }
+    } else return;
     onStatusChange?.();
   };
 
@@ -100,20 +79,22 @@ export default function TaskCard({
   const [showDelegate, setShowDelegate] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
 
-  const scopeTag = task.project_id
-    ? 'project'
-    : task.area_id
-    ? 'area'
-    : null;
+  const scopeTag = task.project_id ? 'project' : task.area_id ? 'area' : null;
 
   const truncate = (text, max = 20) =>
     text.length > max ? text.slice(0, max - 3) + '...' : text;
 
-  const extraName = showProjectNameInstead && task.project_name
-    ? task.project_name
-    : showAreaNameInstead && task.area_name
-    ? task.area_name
-    : null;
+  const extraName =
+    showProjectNameInstead && task.project_name
+      ? task.project_name
+      : showAreaNameInstead && task.area_name
+      ? task.area_name
+      : null;
+
+  const delegateEntry = assignees.find(a => a.user_id === viewingUserId);
+  const assignedByName = delegateEntry?.delegated_by || task.owner_name;
+
+  const showDelegateTag = type === 'delegate' && !isArchived && (viewIsOwner || viewIsAssignee);
 
   return (
     <>
@@ -211,18 +192,25 @@ export default function TaskCard({
           justifyContent: 'flex-end',
           flex: 2
         }}>
-          {tagStyle && (
-  viewIsOwner
-    ? <button
-        onClick={e => { e.stopPropagation(); setShowDelegate(true); }}
-        style={tagStyle}
-      >
-        Delegate
-      </button>
-    : <span style={tagStyle}>
-        Delegated by: {task.owner_name}
-      </span>
-)}
+          {showDelegateTag && (
+            <span
+              onClick={e => {
+                e.stopPropagation();
+                setShowDelegate(true);
+              }}
+              style={{
+                border: `1px solid ${assignees.length === 0 ? borderColors['delegate'] : borderColors['do']}`,
+                borderRadius: '12px',
+                padding: '0.25rem 0.75rem',
+                fontSize: '0.75rem',
+                fontWeight: 'bold',
+                color: assignees.length === 0 ? borderColors['delegate'] : borderColors['do'],
+                cursor: 'pointer'
+              }}
+            >
+              {viewIsOwner ? 'Delegate' : `Delegated by: ${assignedByName}`}
+            </span>
+          )}
 
           {archiveBadge && (
             <span style={{

@@ -1,6 +1,6 @@
 const pool = require('../db');
 
-// GET /api/tasks — fetch active (non-archived) tasks
+// GET /api/tasks
 const getAllTasks = async (req, res) => {
   try {
     const result = await pool.query(`
@@ -21,9 +21,12 @@ const getAllTasks = async (req, res) => {
     const tasks = result.rows;
 
     const assignees = await pool.query(`
-      SELECT ta.task_id, u.user_id, u.full_name
+      SELECT
+        ta.task_id, u.user_id, u.full_name,
+        d.full_name AS delegated_by
       FROM task_assignments ta
       JOIN users u ON ta.assignee_id = u.user_id
+      LEFT JOIN users d ON ta.assigned_by = d.user_id
     `);
 
     const grouped = {};
@@ -31,7 +34,8 @@ const getAllTasks = async (req, res) => {
       if (!grouped[row.task_id]) grouped[row.task_id] = [];
       grouped[row.task_id].push({
         user_id: row.user_id,
-        full_name: row.full_name
+        full_name: row.full_name,
+        delegated_by: row.delegated_by || null
       });
     });
 
@@ -47,12 +51,11 @@ const getAllTasks = async (req, res) => {
   }
 };
 
-// GET /api/tasks/archive/:id — completed OR expired tasks for a user
+// GET /api/tasks/archive/:id
 const getArchivedTasksForUser = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Fetch all completed or expired tasks
     const taskResult = await pool.query(`
       SELECT
         t.task_id, t.title, t.description, t.deadline, t.importance, t.urgency,
@@ -66,14 +69,15 @@ const getArchivedTasksForUser = async (req, res) => {
 
     const allArchivedTasks = taskResult.rows;
 
-    // Fetch all assignees in one go
     const assigneeResult = await pool.query(`
-      SELECT ta.task_id, u.user_id, u.full_name
+      SELECT
+        ta.task_id, u.user_id, u.full_name,
+        d.full_name AS delegated_by
       FROM task_assignments ta
       JOIN users u ON ta.assignee_id = u.user_id
+      LEFT JOIN users d ON ta.assigned_by = d.user_id
     `);
 
-    // Group assignees by task_id
     const assigneesByTask = {};
     assigneeResult.rows.forEach(row => {
       if (!assigneesByTask[row.task_id]) {
@@ -81,18 +85,17 @@ const getArchivedTasksForUser = async (req, res) => {
       }
       assigneesByTask[row.task_id].push({
         user_id: row.user_id,
-        full_name: row.full_name
+        full_name: row.full_name,
+        delegated_by: row.delegated_by || null
       });
     });
 
-    // Filter to tasks the user owns or is assigned to
     const filtered = allArchivedTasks.filter(task => {
       const isOwner = task.owner_id === Number(id);
       const isAssigned = (assigneesByTask[task.task_id] || []).some(a => a.user_id === Number(id));
       return isOwner || isAssigned;
     });
 
-    // Attach assignees
     const enriched = filtered.map(t => ({
       ...t,
       assignees: assigneesByTask[t.task_id] || []
@@ -105,8 +108,7 @@ const getArchivedTasksForUser = async (req, res) => {
   }
 };
 
-
-// POST /api/tasks — create task
+// POST /api/tasks
 const createTask = async (req, res) => {
   const {
     title, description, deadline, importance, urgency,
@@ -127,7 +129,7 @@ const createTask = async (req, res) => {
   }
 };
 
-// PATCH /api/tasks/:id — update task status
+// PATCH /api/tasks/:id
 const updateTask = async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -145,7 +147,7 @@ const updateTask = async (req, res) => {
   }
 };
 
-// DELETE /api/tasks/:id — delete a task
+// DELETE /api/tasks/:id
 const deleteTask = async (req, res) => {
   const { id } = req.params;
 
@@ -158,15 +160,18 @@ const deleteTask = async (req, res) => {
   }
 };
 
-// GET /api/tasks/:id/assignees — get assignees
+// GET /api/tasks/:id/assignees
 const getTaskAssignees = async (req, res) => {
   const { id } = req.params;
 
   try {
     const result = await pool.query(`
-      SELECT u.user_id, u.full_name, u.email, ta.assigned_at
+      SELECT
+        u.user_id, u.full_name, u.email,
+        d.full_name AS delegated_by
       FROM task_assignments ta
       JOIN users u ON ta.assignee_id = u.user_id
+      LEFT JOIN users d ON ta.assigned_by = d.user_id
       WHERE ta.task_id = $1
     `, [id]);
 
@@ -177,39 +182,50 @@ const getTaskAssignees = async (req, res) => {
   }
 };
 
-// POST /api/tasks/:id/assignees — assign task
+// POST /api/tasks/:id/assignees
 const assignTask = async (req, res) => {
-  const { id } = req.params;
-  const { user_id } = req.body;
-  const assigned_by = req.user?.user_id || 1;
+  const { id } = req.params; // task_id
+  const { user_id } = req.body; // assignee to be added
+  const assigned_by = req.user?.user_id || 1; // fallback for dev/testing
 
   try {
+    // 1. Prevent duplicate assignments
+    const alreadyAssigned = await pool.query(`
+      SELECT 1 FROM task_assignments
+      WHERE task_id = $1 AND assignee_id = $2
+    `, [id, user_id]);
+
+    if (alreadyAssigned.rows.length > 0) {
+      return res.status(400).json({ error: 'User is already assigned to this task.' });
+    }
+
+    // 2. Insert new assignment
     await pool.query(`
       INSERT INTO task_assignments (task_id, assignee_id, assigned_by)
-      SELECT $1, $2, $3
-      WHERE NOT EXISTS (
-        SELECT 1 FROM task_assignments
-        WHERE task_id = $1 AND assignee_id = $2
-      )
+      VALUES ($1, $2, $3)
     `, [id, user_id, assigned_by]);
 
+    // 3. Get task title for notification
     const { rows: taskInfo } = await pool.query(
       'SELECT title FROM tasks WHERE task_id = $1',
       [id]
     );
     const taskTitle = taskInfo[0]?.title || '(untitled)';
 
+    // 4. Get assigner's name
     const { rows: assignerInfo } = await pool.query(
       'SELECT full_name FROM users WHERE user_id = $1',
       [assigned_by]
     );
     const assignerName = assignerInfo[0]?.full_name || 'Someone';
 
+    // 5. Add notification for new assignee
     await pool.query(`
       INSERT INTO notifications (user_id, message)
       VALUES ($1, $2)
     `, [user_id, `${assignerName} assigned you "${taskTitle}"`]);
 
+    // 6. Return updated assignee list
     const { rows: updated } = await pool.query(`
       SELECT u.user_id, u.full_name, u.email
       FROM task_assignments ta
@@ -224,15 +240,20 @@ const assignTask = async (req, res) => {
   }
 };
 
-// DELETE /api/tasks/:id/assignees/:userId — unassign
+// DELETE /api/tasks/:id/assignees/:userId
 const unassignTask = async (req, res) => {
   const { id, userId } = req.params;
+  const requestorId = req.user?.user_id || 1;
 
   try {
-    await pool.query(`
+    const result = await pool.query(`
       DELETE FROM task_assignments
-      WHERE task_id = $1 AND assignee_id = $2
-    `, [id, userId]);
+      WHERE task_id = $1 AND assignee_id = $2 AND assigned_by = $3
+    `, [id, userId, requestorId]);
+
+    if (result.rowCount === 0) {
+      return res.status(403).json({ error: 'You can only unassign users you personally assigned.' });
+    }
 
     res.sendStatus(204);
   } catch (err) {

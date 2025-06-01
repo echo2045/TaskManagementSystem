@@ -9,7 +9,6 @@ import SupervisorAllocation from './components/SupervisorAllocation';
 import AddUser from './components/AddUser';
 import ChangePassword from './components/ChangePassword';
 import Notifications from './components/Notifications';
-// 🔥 NEW
 import Projects from './components/Projects';
 import Areas from './components/Areas';
 
@@ -34,7 +33,6 @@ export default function App() {
         return <AddUser />;
       case 'changePassword':
         return <ChangePassword userId={user.user_id} />;
-      // 🔥 NEW
       case 'projects':
         return <Projects />;
       case 'areas':
@@ -44,13 +42,18 @@ export default function App() {
     }
   };
 
+  // Full list of links with role-based condition for allocate/addUser
   const links = [
     { key: 'tasks', label: 'Tasks' },
     { key: 'archive', label: 'Archive' },
-    { key: 'projects', label: 'Projects' },  // 🔥 NEW
-    { key: 'areas', label: 'Areas' },        // 🔥 NEW
-    { key: 'allocate', label: 'Allocate Supervisor' },
-    { key: 'addUser', label: 'Add User' },
+    { key: 'projects', label: 'Projects' },
+    { key: 'areas', label: 'Areas' },
+    ...(user.role === 'manager' || user.role === 'hr'
+      ? [
+          { key: 'allocate', label: 'Allocate Supervisor' },
+          { key: 'addUser', label: 'Add User' }
+        ]
+      : []),
     { key: 'changePassword', label: 'Change Password' }
   ];
 
@@ -130,10 +133,11 @@ export default function App() {
           flex: 2,
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'hidden',
+          overflowY: 'auto',
           background: '#FAFAFA',
           padding: '1rem 2rem',
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
+          height: '100%'
         }}>
           {renderMain()}
         </main>

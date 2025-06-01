@@ -30,6 +30,7 @@ export default function ArchiveBoard({ filterUser, currentUser }) {
       .then(setTasks)
       .catch(console.error);
   }, [viewingUserId]);
+  
 
   useEffect(() => {
     fetchArchive();

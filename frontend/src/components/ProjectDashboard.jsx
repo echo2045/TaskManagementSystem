@@ -1,3 +1,4 @@
+
 // src/components/ProjectDashboard.jsx
 import React, { useState, useEffect, useCallback, useContext } from 'react';
 import TaskCard        from './TaskCard';
@@ -66,13 +67,19 @@ export default function ProjectDashboard({ filterUser }) {
   if (!allowed) return <div style={{ padding:'2rem' }}>You are not this person's supervisor.</div>;
 
   const visible = tasks
-    .filter(t => {
-      const assignedIds = Array.isArray(t.assignees) ? t.assignees.map(a => a.user_id) : [];
-      return t.project_id &&
-        t.status === 'pending' &&
-        new Date(t.deadline) >= now &&
-        (t.owner_id === viewingUserId || assignedIds.includes(viewingUserId));
-    })
+  .filter(t => {
+    const assignedIds = Array.isArray(t.assignees) ? t.assignees.map(a => a.user_id) : [];
+    const isManager = ['manager', 'hr'].includes(user.role);
+    
+    return t.project_id &&
+      t.status === 'pending' &&
+      new Date(t.deadline) >= now &&
+      (
+        isManager ||
+        t.owner_id === viewingUserId ||
+        assignedIds.includes(viewingUserId)
+      );
+  })
     .filter(t => {
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
       if (typeFilter && getTaskColor(t.importance, t.urgency) !== typeFilter) return false;
@@ -89,68 +96,57 @@ export default function ProjectDashboard({ filterUser }) {
   const canCreate = viewingUserId === user.user_id;
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
-      {canCreate && (
-        <>
-          <h3 style={{ padding:'0 1rem' }}>Task Entry</h3>
-          <div style={{ display:'flex', gap:'0.5rem', padding:'0 1rem', marginBottom:'1rem' }}>
-            <input
-              placeholder="Enter Task Name"
-              value={newTitle}
-              onChange={e => setNewTitle(e.target.value)}
-              style={{ flex:1, padding:'0.5rem' }}
-            />
-            <button onClick={() => setModalOpen(true)} disabled={!newTitle.trim()}>Create</button>
-          </div>
-          <CreateTaskModal
-            visible={modalOpen}
-            onClose={() => { setModalOpen(false); setNewTitle(''); fetchTasks(); }}
-            ownerId={user.user_id}
-            initialTitle={newTitle}
-          />
-        </>
-      )}
+  <div style={{
+    height: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    padding: '1rem'
+  }}>
+    <h3 style={{ marginBottom: '1rem' }}>Project Tasks</h3>
 
-      {/* Filters */}
-      <div style={{ display:'flex', gap:'1.5rem', padding:'0 1rem', marginBottom:'1rem' }}>
-        <div style={{ flex:2 }}>
-          <label>Search</label>
-          <input value={search} onChange={e => setSearch(e.target.value)} style={{ width:'100%' }} />
-        </div>
-        <div>
-          <label>Type</label>
-          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-            <option value="">All</option>
-            <option value="do">Do</option>
-            <option value="schedule">Schedule</option>
-            <option value="delegate">Delegate</option>
-            <option value="eliminate">Eliminate</option>
-          </select>
-        </div>
-        <div>
-          <label>Date</label>
-          <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} />
-        </div>
-      </div>
-
-      {/* Task List */}
-      <div style={{ flex:1, overflowY:'auto', padding:'0 1rem' }}>
-        {Object.entries(grouped).map(([date, items]) => (
-          <div key={date}>
-            <h4>{date}</h4>
-            {items.map(t => (
-              <TaskCard
-                key={t.task_id}
-                task={t}
-                viewingUserId={viewingUserId}
-                onStatusChange={fetchTasks}
-                showProjectNameInstead={true}
-              />
-            ))}
-          </div>
-        ))}
-        {visible.length === 0 && <p>No tasks to display.</p>}
-      </div>
+    {/* Filters */}
+    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', alignItems: 'flex-end' }}>
+      <input
+        placeholder="Search by task title"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        style={{ flex: 2, padding: '0.5rem' }}
+      />
+      <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ height: '2.5rem' }}>
+        <option value="">All Types</option>
+        <option value="do">Do</option>
+        <option value="schedule">Schedule</option>
+        <option value="delegate">Delegate</option>
+        <option value="eliminate">Eliminate</option>
+      </select>
+      <input
+        type="date"
+        value={dateFilter}
+        onChange={e => setDateFilter(e.target.value)}
+        style={{ height: '2.5rem' }}
+      />
     </div>
-  );
+
+    {/* Scrollable Task Section */}
+    <div style={{ flex: 1, overflowY: 'auto' }}>
+      {Object.entries(grouped).map(([date, items]) => (
+        <div key={date}>
+          <h4>{date}</h4>
+          {items.map(t => (
+            <TaskCard
+              key={t.task_id}
+              task={t}
+              viewingUserId={viewingUserId}
+              showProjectNameInstead={true}
+              onStatusChange={fetchTasks}
+            />
+          ))}
+        </div>
+      ))}
+      {visible.length === 0 && <p>No project tasks to display.</p>}
+    </div>
+  </div>
+);
+
 }

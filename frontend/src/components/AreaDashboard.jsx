@@ -32,7 +32,7 @@ export default function AreaDashboard({ viewingOwnOnly = false }) {
 
   const fetchAreas = async () => {
     try {
-      const data = await getAllAreas(true);
+      const data = await getAllAreas(true); // API should return creator_name
       setAreas(data);
     } catch (err) {
       console.error('Error loading area list', err);
@@ -57,28 +57,32 @@ export default function AreaDashboard({ viewingOwnOnly = false }) {
     visible = visible.filter(t => t.area_id === Number(areaFilter));
   }
 
-  const getAreaName = id =>
-    areas.find(a => a.area_id === id)?.name || 'Area';
-
   return (
-    <div style={{ padding: '1rem' }}>
+    <div style={{
+      height: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      padding: '1rem'
+    }}>
       <h3 style={{ marginBottom: '1rem' }}>Area Tasks</h3>
 
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', alignItems: 'flex-end' }}>
         <input
           placeholder="Search by task title"
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={{ flex: 2, padding: '0.5rem' }}
         />
-        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ height: '2.5rem' }}>
           <option value="">All Types</option>
           <option value="do">Do</option>
           <option value="schedule">Schedule</option>
           <option value="delegate">Delegate</option>
           <option value="eliminate">Eliminate</option>
         </select>
-        <select value={areaFilter} onChange={e => setAreaFilter(e.target.value)}>
+        <select value={areaFilter} onChange={e => setAreaFilter(e.target.value)} style={{ height: '2.5rem' }}>
           <option value="">All Areas</option>
           {areas.map(a => (
             <option key={a.area_id} value={a.area_id}>
@@ -88,19 +92,33 @@ export default function AreaDashboard({ viewingOwnOnly = false }) {
         </select>
       </div>
 
-      {visible.length > 0 ? (
-        visible.map(t => (
-          <TaskCard
-            key={t.task_id}
-            task={t}
-            viewingUserId={user.user_id}
-            showAreaNameInstead={true}
-            onStatusChange={fetchTasks}
-          />
-        ))
-      ) : (
-        <p>No area tasks to display.</p>
-      )}
+      {/* Scrollable Task Section */}
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        {Object.entries(
+          visible.reduce((acc, t) => {
+            const key = new Date(t.deadline).toLocaleDateString();
+            (acc[key] = acc[key] || []).push(t);
+            return acc;
+          }, {})
+        ).map(([date, items]) => (
+          <div key={date}>
+            <h4>{date}</h4>
+            {items.map(t => {
+              const area = areas.find(a => a.area_id === t.area_id);
+              return (
+                <TaskCard
+                  key={t.task_id}
+                  task={{ ...t, owner_name: area?.creator_name || 'Unknown' }}
+                  viewingUserId={user.user_id}
+                  showAreaNameInstead={true}
+                  onStatusChange={fetchTasks}
+                />
+              );
+            })}
+          </div>
+        ))}
+        {visible.length === 0 && <p>No area tasks to display.</p>}
+      </div>
     </div>
   );
 }

@@ -104,7 +104,7 @@ export default function TaskDetailsModal({
                     {a.full_name}
                   </span>
                   <span style={{ marginLeft: '1rem', fontSize: '0.85rem' }}>
-                    {new Date(a.assigned_at).toLocaleDateString()}
+                    {a.name}
                   </span>
                 </div>
               ))}
