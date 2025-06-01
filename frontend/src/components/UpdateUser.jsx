@@ -1,4 +1,3 @@
-// src/components/UpdateUser.jsx
 import React, { useEffect, useState, useContext } from 'react';
 import { AuthContext } from '../AuthContext';
 import { getUsers, updateUserById } from '../api/users';
@@ -137,7 +136,8 @@ export default function UpdateUser() {
                   }
                   style={{ width: '100%', padding: '0.5rem' }}
                 >
-                  <option value="staff">Staff</option>
+                  <option value="member">Member</option>
+                  <option value="team_lead">Team Lead</option>
                   <option value="manager">Manager</option>
                   <option value="hr">HR</option>
                 </select>
@@ -156,7 +156,7 @@ export default function UpdateUser() {
                 marginTop: '1rem',
               }}
             >
-              Update
+              {isManagerOrHR ? 'Update User Info' : 'Update My Info'}
             </button>
           </div>
         </div>
