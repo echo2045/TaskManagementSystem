@@ -1,4 +1,5 @@
 // src/components/CreateTaskModal.jsx
+
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../AuthContext';
 import { createTask } from '../api/tasks';
@@ -11,8 +12,8 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
     title: initialTitle,
     description: '',
     deadline: '',
-    importance: 3,
-    urgency: 3,
+    importance: 5,
+    urgency: 5,
     project_id: null,
     area_id: null
   });
@@ -27,8 +28,8 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
         title: initialTitle,
         description: '',
         deadline: '',
-        importance: 3,
-        urgency: 3,
+        importance: 5,
+        urgency: 5,
         project_id: null,
         area_id: null
       });
@@ -221,12 +222,12 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
             </div>
           )}
 
-          {/* Priority Sliders */}
+          {/* Priority Sliders (1–10) */}
           <div>
             <label>Importance: {form.importance}</label>
             <input
               type="range"
-              min={1} max={5}
+              min={1} max={10}
               value={form.importance}
               onChange={(e) => setForm({ ...form, importance: +e.target.value })}
               style={{ width: '100%' }}
@@ -237,7 +238,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
             <label>Urgency: {form.urgency}</label>
             <input
               type="range"
-              min={1} max={5}
+              min={1} max={10}
               value={form.urgency}
               onChange={(e) => setForm({ ...form, urgency: +e.target.value })}
               style={{ width: '100%' }}

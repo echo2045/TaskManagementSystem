@@ -1,8 +1,13 @@
+// src/utils/getTaskColor.js
+
 export function getTaskColor(importance, urgency) {
-  if (importance >= 4 && urgency >= 4) return 'do';         // Do: urgent & important
-  if (importance >= 4 && urgency < 4) return 'schedule';    // Schedule: important only
-  if (importance < 4 && urgency >= 4) return 'delegate';    // Delegate: urgent only
-  return 'eliminate';                                       // Eliminate: neither
+  const isImportant = importance > 5;
+  const isUrgent = urgency > 5;
+
+  if (isImportant && isUrgent) return 'do';         // Do: urgent & important
+  if (isImportant && !isUrgent) return 'schedule';  // Schedule: important only
+  if (!isImportant && isUrgent) return 'delegate';  // Delegate: urgent only
+  return 'eliminate';                               // Eliminate: neither
 }
 
 export const borderColors = {
