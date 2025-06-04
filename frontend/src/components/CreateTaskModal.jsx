@@ -1,5 +1,4 @@
 // src/components/CreateTaskModal.jsx
-
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../AuthContext';
 import { createTask } from '../api/tasks';
@@ -12,8 +11,8 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
     title: initialTitle,
     description: '',
     deadline: '',
-    importance: 5,
-    urgency: 5,
+    importance: 3,
+    urgency: 3,
     project_id: null,
     area_id: null
   });
@@ -28,8 +27,8 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
         title: initialTitle,
         description: '',
         deadline: '',
-        importance: 5,
-        urgency: 5,
+        importance: 3,
+        urgency: 3,
         project_id: null,
         area_id: null
       });
@@ -133,6 +132,11 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
     return null;
   };
 
+  const isSubmitDisabled =
+    !form.deadline ||
+    (taskType === 'project' && !form.project_id) ||
+    (taskType === 'area' && !form.area_id);
+
   return (
     <div style={overlay}>
       <div style={modal}>
@@ -222,7 +226,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
             </div>
           )}
 
-          {/* Priority Sliders (1–10) */}
+          {/* Priority Sliders */}
           <div>
             <label>Importance: {form.importance}</label>
             <input
@@ -248,15 +252,16 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
           {/* Confirm Button */}
           <button
             onClick={handleSubmit}
-            disabled={!form.deadline}
+            disabled={isSubmitDisabled || loading}
             style={{
               alignSelf: 'flex-end',
               padding: '0.5rem 1rem',
-              background: '#333',
+              background: isSubmitDisabled ? '#aaa' : '#333',
               color: '#fff',
               border: 'none',
               borderRadius: '4px',
-              cursor: 'pointer'
+              cursor: isSubmitDisabled ? 'not-allowed' : 'pointer',
+              opacity: isSubmitDisabled ? 0.6 : 1
             }}
           >
             {loading ? 'Saving…' : 'Create Task'}
