@@ -1,4 +1,3 @@
-// src/components/TaskCard.jsx
 import React, { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../AuthContext';
 import {
@@ -35,15 +34,23 @@ export default function TaskCard({
   const viewIsOwner = viewingUserId === task.owner_id;
   const viewIsAssignee = assignees.some(a => a.user_id === viewingUserId);
 
-  const type = getTaskColor(task.importance, task.urgency);
-  const defaultBorder = borderColors[type];
-  const defaultInterior = interiorColors[type];
+  // 📌 Look for this user's assignment entry
+  const assigneeEntry = assignees.find(a => a.user_id === viewingUserId);
 
-  let cardBg = defaultInterior;
-  if (type === 'delegate' && viewIsAssignee) {
-    cardBg = interiorColors['do']; // mark as delegated
+  // 📌 Decide color based on assignee-specific score (if viewing as assignee)
+  const colorType = viewIsAssignee && assigneeEntry
+    ? getTaskColor(assigneeEntry.importance, assigneeEntry.urgency)
+    : getTaskColor(task.importance, task.urgency);
+
+  const border = borderColors[colorType];
+  let cardBg = interiorColors[colorType];
+
+  // 📌 Special override: delegated tasks seen by assignee = red bg
+  if (task.importance === 0 && task.urgency === 0 && viewIsAssignee) {
+    cardBg = interiorColors['do'];
   }
 
+  // 📌 Archive badge (bottom right)
   let archiveBadge = null;
   if (isArchived) {
     archiveBadge =
@@ -94,14 +101,25 @@ export default function TaskCard({
   const delegateEntry = assignees.find(a => a.user_id === viewingUserId);
   const assignedByName = delegateEntry?.delegated_by || task.owner_name;
 
-  const showDelegateTag = type === 'delegate' && !isArchived && (viewIsOwner || viewIsAssignee);
+  // ✅ Delegate badge logic for type 'delegate' only
+  const isDelegateTask = getTaskColor(task.importance, task.urgency) === 'delegate';
+  const isAssigned = assignees.length > 0;
+
+  const showDelegateTag = isDelegateTask && !isArchived && (viewIsOwner || viewIsAssignee);
+  const delegateTagColor = viewIsOwner
+    ? (isAssigned ? borderColors['do'] : borderColors['delegate'])
+    : borderColors['do'];
+
+  const delegateTagText = viewIsOwner
+    ? 'Delegate'
+    : `Delegated by: ${assignedByName}`;
 
   return (
     <>
       <div
         onClick={() => setShowDetails(true)}
         style={{
-          border: `2px solid ${defaultBorder}`,
+          border: `2px solid ${border}`,
           background: cardBg,
           color: '#000',
           padding: '0.75rem 1rem',
@@ -199,16 +217,16 @@ export default function TaskCard({
                 setShowDelegate(true);
               }}
               style={{
-                border: `1px solid ${assignees.length === 0 ? borderColors['delegate'] : borderColors['do']}`,
+                border: `1px solid ${delegateTagColor}`,
                 borderRadius: '12px',
                 padding: '0.25rem 0.75rem',
                 fontSize: '0.75rem',
                 fontWeight: 'bold',
-                color: assignees.length === 0 ? borderColors['delegate'] : borderColors['do'],
+                color: delegateTagColor,
                 cursor: 'pointer'
               }}
             >
-              {viewIsOwner ? 'Delegate' : `Delegated by: ${assignedByName}`}
+              {delegateTagText}
             </span>
           )}
 
