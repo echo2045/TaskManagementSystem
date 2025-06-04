@@ -33,9 +33,13 @@ export function updateAssignee(task_id, user_id, completed) {
     : axios.delete(`${url}/${user_id}`);
 }
 
-// ✅ These are the missing exports your frontend expected:
-export function addAssignee(task_id, user_id) {
-  return axios.post(`${BASE_URL}/${task_id}/assignees`, { user_id });
+// ✅ UPDATED: Accept importance and urgency in payload
+export function addAssignee(task_id, user_id, importance, urgency) {
+  return axios.post(`${BASE_URL}/${task_id}/assignees`, {
+    user_id,
+    importance,
+    urgency
+  });
 }
 
 export function removeAssignee(task_id, user_id) {

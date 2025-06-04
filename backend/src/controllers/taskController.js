@@ -1,3 +1,4 @@
+// src/controllers/taskController.js
 const pool = require('../db');
 
 // GET /api/tasks
@@ -23,6 +24,8 @@ const getAllTasks = async (req, res) => {
     const assignees = await pool.query(`
       SELECT
         ta.task_id, u.user_id, u.full_name,
+        ta.importance AS assignee_importance,
+        ta.urgency AS assignee_urgency,
         d.full_name AS delegated_by
       FROM task_assignments ta
       JOIN users u ON ta.assignee_id = u.user_id
@@ -35,7 +38,9 @@ const getAllTasks = async (req, res) => {
       grouped[row.task_id].push({
         user_id: row.user_id,
         full_name: row.full_name,
-        delegated_by: row.delegated_by || null
+        delegated_by: row.delegated_by || null,
+        importance: row.assignee_importance,
+        urgency: row.assignee_urgency
       });
     });
 
@@ -72,6 +77,8 @@ const getArchivedTasksForUser = async (req, res) => {
     const assigneeResult = await pool.query(`
       SELECT
         ta.task_id, u.user_id, u.full_name,
+        ta.importance AS assignee_importance,
+        ta.urgency AS assignee_urgency,
         d.full_name AS delegated_by
       FROM task_assignments ta
       JOIN users u ON ta.assignee_id = u.user_id
@@ -86,7 +93,9 @@ const getArchivedTasksForUser = async (req, res) => {
       assigneesByTask[row.task_id].push({
         user_id: row.user_id,
         full_name: row.full_name,
-        delegated_by: row.delegated_by || null
+        delegated_by: row.delegated_by || null,
+        importance: row.assignee_importance,
+        urgency: row.assignee_urgency
       });
     });
 
@@ -160,7 +169,7 @@ const deleteTask = async (req, res) => {
   }
 };
 
-// GET /api/tasks/:id/assignees
+// ✅ FIXED: GET /api/tasks/:id/assignees
 const getTaskAssignees = async (req, res) => {
   const { id } = req.params;
 
@@ -168,6 +177,8 @@ const getTaskAssignees = async (req, res) => {
     const result = await pool.query(`
       SELECT
         u.user_id, u.full_name, u.email,
+        ta.importance AS assignee_importance,
+        ta.urgency AS assignee_urgency,
         d.full_name AS delegated_by
       FROM task_assignments ta
       JOIN users u ON ta.assignee_id = u.user_id
@@ -175,7 +186,17 @@ const getTaskAssignees = async (req, res) => {
       WHERE ta.task_id = $1
     `, [id]);
 
-    res.json(result.rows);
+    // ✅ Map fields to match frontend expectations
+    const formatted = result.rows.map(row => ({
+      user_id: row.user_id,
+      full_name: row.full_name,
+      email: row.email,
+      importance: row.assignee_importance,
+      urgency: row.assignee_urgency,
+      delegated_by: row.delegated_by
+    }));
+
+    res.json(formatted);
   } catch (err) {
     console.error('Error fetching assignees:', err.message);
     res.status(500).json({ error: err.message });
@@ -184,12 +205,11 @@ const getTaskAssignees = async (req, res) => {
 
 // POST /api/tasks/:id/assignees
 const assignTask = async (req, res) => {
-  const { id } = req.params; // task_id
-  const { user_id } = req.body; // assignee to be added
-  const assigned_by = req.user?.user_id || 1; // fallback for dev/testing
+  const { id } = req.params;
+  const { user_id, importance, urgency } = req.body;
+  const assigned_by = req.user?.user_id || 1;
 
   try {
-    // 1. Prevent duplicate assignments
     const alreadyAssigned = await pool.query(`
       SELECT 1 FROM task_assignments
       WHERE task_id = $1 AND assignee_id = $2
@@ -199,33 +219,28 @@ const assignTask = async (req, res) => {
       return res.status(400).json({ error: 'User is already assigned to this task.' });
     }
 
-    // 2. Insert new assignment
     await pool.query(`
-      INSERT INTO task_assignments (task_id, assignee_id, assigned_by)
-      VALUES ($1, $2, $3)
-    `, [id, user_id, assigned_by]);
+      INSERT INTO task_assignments (task_id, assignee_id, assigned_by, importance, urgency)
+      VALUES ($1, $2, $3, $4, $5)
+    `, [id, user_id, assigned_by, importance, urgency]);
 
-    // 3. Get task title for notification
     const { rows: taskInfo } = await pool.query(
       'SELECT title FROM tasks WHERE task_id = $1',
       [id]
     );
     const taskTitle = taskInfo[0]?.title || '(untitled)';
 
-    // 4. Get assigner's name
     const { rows: assignerInfo } = await pool.query(
       'SELECT full_name FROM users WHERE user_id = $1',
       [assigned_by]
     );
     const assignerName = assignerInfo[0]?.full_name || 'Someone';
 
-    // 5. Add notification for new assignee
     await pool.query(`
       INSERT INTO notifications (user_id, message)
       VALUES ($1, $2)
     `, [user_id, `${assignerName} assigned you "${taskTitle}"`]);
 
-    // 6. Return updated assignee list
     const { rows: updated } = await pool.query(`
       SELECT u.user_id, u.full_name, u.email
       FROM task_assignments ta
