@@ -26,6 +26,7 @@ const getAllTasks = async (req, res) => {
         ta.task_id, u.user_id, u.full_name,
         ta.importance AS assignee_importance,
         ta.urgency AS assignee_urgency,
+        ta.is_completed,
         d.full_name AS delegated_by
       FROM task_assignments ta
       JOIN users u ON ta.assignee_id = u.user_id
@@ -40,7 +41,8 @@ const getAllTasks = async (req, res) => {
         full_name: row.full_name,
         delegated_by: row.delegated_by || null,
         importance: row.assignee_importance,
-        urgency: row.assignee_urgency
+        urgency: row.assignee_urgency,
+        is_completed: row.is_completed
       });
     });
 
@@ -79,6 +81,7 @@ const getArchivedTasksForUser = async (req, res) => {
         ta.task_id, u.user_id, u.full_name,
         ta.importance AS assignee_importance,
         ta.urgency AS assignee_urgency,
+        ta.is_completed,
         d.full_name AS delegated_by
       FROM task_assignments ta
       JOIN users u ON ta.assignee_id = u.user_id
@@ -95,7 +98,8 @@ const getArchivedTasksForUser = async (req, res) => {
         full_name: row.full_name,
         delegated_by: row.delegated_by || null,
         importance: row.assignee_importance,
-        urgency: row.assignee_urgency
+        urgency: row.assignee_urgency,
+        is_completed: row.is_completed
       });
     });
 
@@ -169,7 +173,7 @@ const deleteTask = async (req, res) => {
   }
 };
 
-// ✅ FIXED: GET /api/tasks/:id/assignees
+// GET /api/tasks/:id/assignees
 const getTaskAssignees = async (req, res) => {
   const { id } = req.params;
 
@@ -179,6 +183,7 @@ const getTaskAssignees = async (req, res) => {
         u.user_id, u.full_name, u.email,
         ta.importance AS assignee_importance,
         ta.urgency AS assignee_urgency,
+        ta.is_completed,
         d.full_name AS delegated_by
       FROM task_assignments ta
       JOIN users u ON ta.assignee_id = u.user_id
@@ -186,13 +191,13 @@ const getTaskAssignees = async (req, res) => {
       WHERE ta.task_id = $1
     `, [id]);
 
-    // ✅ Map fields to match frontend expectations
     const formatted = result.rows.map(row => ({
       user_id: row.user_id,
       full_name: row.full_name,
       email: row.email,
       importance: row.assignee_importance,
       urgency: row.assignee_urgency,
+      is_completed: row.is_completed,
       delegated_by: row.delegated_by
     }));
 
@@ -277,6 +282,25 @@ const unassignTask = async (req, res) => {
   }
 };
 
+// PATCH /api/tasks/:taskId/assignment/:userId/complete
+const markAssignmentCompleted = async (req, res) => {
+  const { taskId, userId } = req.params;
+  const { is_completed } = req.body;
+
+  try {
+    await pool.query(
+      `UPDATE task_assignments
+       SET is_completed = $1
+       WHERE task_id = $2 AND assignee_id = $3`,
+      [is_completed, taskId, userId]
+    );
+    res.sendStatus(200);
+  } catch (err) {
+    console.error("Error updating assignment completion", err);
+    res.status(500).json({ error: "Failed to update completion status" });
+  }
+};
+
 module.exports = {
   getAllTasks,
   getArchivedTasksForUser,
@@ -285,5 +309,6 @@ module.exports = {
   deleteTask,
   getTaskAssignees,
   assignTask,
-  unassignTask
+  unassignTask,
+  markAssignmentCompleted
 };

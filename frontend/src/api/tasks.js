@@ -45,3 +45,10 @@ export function addAssignee(task_id, user_id, importance, urgency) {
 export function removeAssignee(task_id, user_id) {
   return axios.delete(`${BASE_URL}/${task_id}/assignees/${user_id}`);
 }
+
+// ✅ NEW: Toggle individual assignee's completion status
+export function markAssigneeComplete(task_id, user_id, is_completed) {
+  return axios.patch(`${BASE_URL}/${task_id}/assignment/${user_id}/complete`, {
+    is_completed
+  });
+}

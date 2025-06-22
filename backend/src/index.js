@@ -22,7 +22,7 @@ app.use('/api/auth', authRoutes);
 
 // Protected routes
 app.use('/api/users', authenticate, userRoutes);
-app.use('/api/tasks', authenticate, taskRoutes);
+app.use('/api/tasks', taskRoutes);
 app.use('/api/notifications', authenticate, notificationRoutes);
 
 // 🚧 TEMPORARILY allow public access to projects and areas

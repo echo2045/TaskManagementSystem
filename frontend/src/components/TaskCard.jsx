@@ -8,8 +8,8 @@ import {
 import {
   getAssignees,
   updateTask,
-  updateAssignee,
-  deleteTask
+  deleteTask,
+  markAssigneeComplete
 } from '../api/tasks';
 import DelegateModal from './DelegateModal';
 import TaskDetailsModal from './TaskDetailsModal';
@@ -33,11 +33,8 @@ export default function TaskCard({
 
   const viewIsOwner = viewingUserId === task.owner_id;
   const viewIsAssignee = assignees.some(a => a.user_id === viewingUserId);
-
-  // 📌 Look for this user's assignment entry
   const assigneeEntry = assignees.find(a => a.user_id === viewingUserId);
 
-  // 📌 Decide color based on assignee-specific score (if viewing as assignee)
   const colorType = viewIsAssignee && assigneeEntry
     ? getTaskColor(assigneeEntry.importance, assigneeEntry.urgency)
     : getTaskColor(task.importance, task.urgency);
@@ -45,12 +42,10 @@ export default function TaskCard({
   const border = borderColors[colorType];
   let cardBg = interiorColors[colorType];
 
-  // 📌 Special override: delegated tasks seen by assignee = red bg
   if (task.importance === 0 && task.urgency === 0 && viewIsAssignee) {
     cardBg = interiorColors['do'];
   }
 
-  // 📌 Archive badge (bottom right)
   let archiveBadge = null;
   if (isArchived) {
     archiveBadge =
@@ -67,11 +62,23 @@ export default function TaskCard({
 
   const handleComplete = async e => {
     e.stopPropagation();
-    if (canOwnerToggleActive || canOwnerToggleArchive) {
-      await updateTask(task.task_id, { status: e.target.checked ? 'completed' : 'pending' });
-    } else if (canAssigneeToggle) {
-      await updateAssignee(task.task_id, authUser.user_id, e.target.checked);
-    } else return;
+    const checked = e.target.checked;
+
+    try {
+      if (canOwnerToggleActive || canOwnerToggleArchive) {
+        await updateTask(task.task_id, { status: checked ? 'completed' : 'pending' });
+      } else if (canAssigneeToggle) {
+        await markAssigneeComplete(task.task_id, authUser.user_id, checked);
+        setAssignees(prev =>
+          prev.map(a =>
+            a.user_id === authUser.user_id ? { ...a, is_completed: checked } : a
+          )
+        );
+      }
+    } catch (err) {
+      console.error('Error updating completion:', err);
+    }
+
     onStatusChange?.();
   };
 
@@ -101,7 +108,6 @@ export default function TaskCard({
   const delegateEntry = assignees.find(a => a.user_id === viewingUserId);
   const assignedByName = delegateEntry?.delegated_by || task.owner_name;
 
-  // ✅ Delegate badge logic for type 'delegate' only
   const isDelegateTask = getTaskColor(task.importance, task.urgency) === 'delegate';
   const isAssigned = assignees.length > 0;
 
@@ -113,6 +119,8 @@ export default function TaskCard({
   const delegateTagText = viewIsOwner
     ? 'Delegate'
     : `Delegated by: ${assignedByName}`;
+
+  const isAssigneeCompleted = assigneeEntry?.is_completed ?? false;
 
   return (
     <>
@@ -143,7 +151,11 @@ export default function TaskCard({
         }}>
           <input
             type="checkbox"
-            checked={task.status === 'completed'}
+            checked={
+              canOwnerToggleActive || canOwnerToggleArchive
+                ? task.status === 'completed'
+                : isAssigneeCompleted
+            }
             onChange={handleComplete}
             onClick={(e) => e.stopPropagation()}
             disabled={!(canOwnerToggleActive || canOwnerToggleArchive || canAssigneeToggle)}
@@ -276,12 +288,16 @@ export default function TaskCard({
           }}
         />
       )}
+
       {showDetails && (
         <TaskDetailsModal
           task={task}
           isArchived={isArchived}
           wasExpired={wasExpired}
-          onClose={() => setShowDetails(false)}
+          onClose={() => {
+            setShowDetails(false);
+            getAssignees(task.task_id).then(setAssignees); // ✅ sync with modal changes
+          }}
         />
       )}
     </>
