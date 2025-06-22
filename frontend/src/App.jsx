@@ -1,6 +1,7 @@
 // src/App.jsx
 import React, { useContext, useState } from 'react';
 import { AuthContext } from './AuthContext';
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import Login from './components/Login';
 import PeopleList from './components/PeopleList';
 import TaskBoard from './components/TaskBoard';
@@ -113,28 +114,26 @@ export default function App() {
       </nav>
 
       {/* BODY */}
-      <div style={{
-        display: 'flex',
-        flex: 1,
-        overflow: 'hidden',
-        position: 'relative'
-      }}>
-        {/* LEFT: People List (Toggleable) */}
+      <div style={{ display: 'flex', flex: 1, position: 'relative', overflow: 'hidden' }}>
+        {/* PeopleList Drawer */}
         <div style={{
-          width: sidebarOpen ? '200px' : '0px',
-          transition: 'width 0.3s ease',
-          overflow: 'hidden'
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          left: 0,
+          width: '200px',
+          transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+          transition: 'transform 0.3s ease',
+          zIndex: 2
         }}>
-          {sidebarOpen && (
-            <PeopleList
-              currentUserId={user.user_id}
-              selectedUserId={selectedUser?.user_id}
-              onSelectUser={u => {
-                setSelectedUser(u);
-                setView('tasks');
-              }}
-            />
-          )}
+          <PeopleList
+            currentUserId={user.user_id}
+            selectedUserId={selectedUser?.user_id}
+            onSelectUser={u => {
+              setSelectedUser(u);
+              setView('tasks');
+            }}
+          />
         </div>
 
         {/* Toggle Button */}
@@ -143,87 +142,91 @@ export default function App() {
           style={{
             position: 'absolute',
             top: '50%',
-            left: sidebarOpen ? '200px' : '0px',
+            left: sidebarOpen ? '200px' : '0',
             transform: 'translateY(-50%)',
             width: '32px',
             height: '64px',
             background: '#2E2E2E',
             color: '#FFF',
             border: 'none',
-            borderRadius: sidebarOpen ? '0 8px 8px 0' : '0 8px 8px 0',
+            borderRadius: '0 8px 8px 0',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
             boxShadow: '0 0 8px rgba(0,0,0,0.2)',
-            zIndex: 2,
-            transition: 'left 0.3s ease, background 0.2s ease'
+            zIndex: 3,
+            transition: 'left 0.3s ease'
           }}
-          title={sidebarOpen ? 'Collapse People' : 'Expand People'}
-          onMouseEnter={e => e.currentTarget.style.background = '#444'}
-          onMouseLeave={e => e.currentTarget.style.background = '#2E2E2E'}
         >
-          <span style={{ fontSize: '1.25rem' }}>
-            {sidebarOpen ? '◀' : '▶'}
-          </span>
+          {sidebarOpen ? <FaChevronLeft /> : <FaChevronRight />}
         </button>
 
-        {/* CENTER */}
-        <main style={{
+        {/* Main + Right Side */}
+        <div style={{
+          marginLeft: sidebarOpen ? '200px' : '0px',
+          transition: 'margin-left 0.3s ease',
           flex: 1,
           display: 'flex',
-          flexDirection: 'column',
-          overflowY: 'auto',
-          background: '#FAFAFA',
-          padding: '1rem 2rem',
-          boxSizing: 'border-box',
           height: '100%',
-          transition: 'margin-left 0.3s ease'
+          overflow: 'hidden'
         }}>
-          {renderMain()}
-        </main>
+          {/* Center: Main Content */}
+          <main style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            overflowY: 'auto',
+            background: '#FAFAFA',
+            padding: '1rem 2rem',
+            boxSizing: 'border-box',
+            height: '100%'
+          }}>
+            {renderMain()}
+          </main>
 
-        {/* RIGHT: Links & Logout */}
-        <aside style={{
-          width: '250px',
-          padding: '1rem',
-          background: '#FFFFFF',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '-2px 0 4px rgba(0,0,0,0.1)'
-        }}>
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {links.map(l => (
-              <div
-                key={l.key}
-                onClick={() => setView(l.key)}
-                style={{
-                  cursor: 'pointer',
-                  padding: '0.5rem 1rem',
-                  borderRadius: '4px',
-                  background: view === l.key ? '#666666' : 'transparent',
-                  color: view === l.key ? '#fff' : '#000',
-                  fontWeight: view === l.key ? 'bold' : 'normal'
-                }}
-              >
-                {l.label}
-              </div>
-            ))}
-          </nav>
-          <div style={{ flex: 1 }} />
-          <button
-            onClick={logout}
-            style={{
-              padding: '0.5rem 1rem',
-              border: '1px solid #555',
-              borderRadius: '4px',
-              background: 'transparent',
-              cursor: 'pointer'
-            }}
-          >
-            Logout
-          </button>
-        </aside>
+          {/* Right Sidebar */}
+          <aside style={{
+            width: '250px',
+            padding: '1rem',
+            background: '#FFFFFF',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '-2px 0 4px rgba(0,0,0,0.1)'
+          }}>
+            <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {links.map(l => (
+                <div
+                  key={l.key}
+                  onClick={() => setView(l.key)}
+                  style={{
+                    cursor: 'pointer',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '4px',
+                    background: view === l.key ? '#666666' : 'transparent',
+                    color: view === l.key ? '#fff' : '#000',
+                    fontWeight: view === l.key ? 'bold' : 'normal'
+                  }}
+                >
+                  {l.label}
+                </div>
+              ))}
+            </nav>
+            <div style={{ flex: 1 }} />
+            <button
+              onClick={logout}
+              style={{
+                padding: '0.5rem 1rem',
+                border: '1px solid #555',
+                borderRadius: '4px',
+                background: 'transparent',
+                cursor: 'pointer'
+              }}
+            >
+              Logout
+            </button>
+          </aside>
+        </div>
       </div>
     </div>
   );
