@@ -1,4 +1,3 @@
-// src/components/DelegateModal.jsx
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../AuthContext';
 import { getSupervisees, getUsers } from '../api/users';
@@ -34,7 +33,9 @@ export default function DelegateModal({ taskId, onClose }) {
       : () => getSupervisees(user.user_id);
     const all = await loader();
     const assignedIds = new Set(assignedList.map(a => a.user_id));
-    setAvailable(all.filter(u => !assignedIds.has(u.user_id)));
+    setAvailable(
+      all.filter(u => !assignedIds.has(u.user_id) && u.user_id !== user.user_id) // ✅ Prevent self-assignment
+    );
   };
 
   const handleAddClick = (u) => {
@@ -169,10 +170,7 @@ export default function DelegateModal({ taskId, onClose }) {
           ))}
         </div>
 
-        {/* Reusable Eisenhower Modal */}
-        {showHelp && (
-          <EisenhowerHelpModal visible={true} onClose={() => setShowHelp(false)} />
-        )}
+        <EisenhowerHelpModal visible={showHelp} onClose={() => setShowHelp(false)} />
       </div>
     </div>
   );
@@ -193,20 +191,10 @@ const modalContent = {
   position: 'relative',
   padding: '1.5rem',
   borderRadius: '8px',
-  width: '480px',
-  maxHeight: '80vh',
+  width: '520px',
+  maxHeight: '85vh',
   overflow: 'hidden',
   boxSizing: 'border-box'
-};
-
-const closeBtn = {
-  position: 'absolute',
-  top: '0.5rem',
-  right: '0.5rem',
-  background: 'transparent',
-  border: 'none',
-  fontSize: '1.5rem',
-  cursor: 'pointer'
 };
 
 const helpBtn = {
@@ -222,6 +210,16 @@ const helpBtnInline = {
   cursor: 'pointer',
   padding: 0,
   margin: 0
+};
+
+const closeBtn = {
+  position: 'absolute',
+  top: '0.5rem',
+  right: '0.5rem',
+  background: 'transparent',
+  border: 'none',
+  fontSize: '1.5rem',
+  cursor: 'pointer'
 };
 
 const item = {

@@ -119,6 +119,9 @@ export default function TaskDetailsModal({
                   <span style={{ marginLeft: '1rem', fontSize: '0.85rem' }}>
                     {a.name}
                   </span>
+                  <span style={{ marginLeft: '1rem', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                    {a.importance ?? '—'} / {a.urgency ?? '—'}
+                  </span>
                 </div>
               ))}
             </div>
