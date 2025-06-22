@@ -13,6 +13,7 @@ export default function AreaDashboard({ viewingOwnOnly = false }) {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [areaFilter, setAreaFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
 
   const fetchTasks = async () => {
     try {
@@ -32,7 +33,7 @@ export default function AreaDashboard({ viewingOwnOnly = false }) {
 
   const fetchAreas = async () => {
     try {
-      const data = await getAllAreas(true); // API should return creator_name
+      const data = await getAllAreas(true);
       setAreas(data);
     } catch (err) {
       console.error('Error loading area list', err);
@@ -56,6 +57,11 @@ export default function AreaDashboard({ viewingOwnOnly = false }) {
   if (areaFilter) {
     visible = visible.filter(t => t.area_id === Number(areaFilter));
   }
+  if (dateFilter) {
+    visible = visible.filter(t =>
+      new Date(t.deadline).toLocaleDateString() === new Date(dateFilter).toLocaleDateString()
+    );
+  }
 
   return (
     <div style={{
@@ -75,6 +81,7 @@ export default function AreaDashboard({ viewingOwnOnly = false }) {
           onChange={e => setSearch(e.target.value)}
           style={{ flex: 2, padding: '0.5rem' }}
         />
+
         <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ height: '2.5rem' }}>
           <option value="">All Types</option>
           <option value="do">Do</option>
@@ -82,6 +89,7 @@ export default function AreaDashboard({ viewingOwnOnly = false }) {
           <option value="delegate">Delegate</option>
           <option value="eliminate">Eliminate</option>
         </select>
+
         <select value={areaFilter} onChange={e => setAreaFilter(e.target.value)} style={{ height: '2.5rem' }}>
           <option value="">All Areas</option>
           {areas.map(a => (
@@ -90,6 +98,13 @@ export default function AreaDashboard({ viewingOwnOnly = false }) {
             </option>
           ))}
         </select>
+
+        <input
+          type="date"
+          value={dateFilter}
+          onChange={e => setDateFilter(e.target.value)}
+          style={{ height: '2.5rem' }}
+        />
       </div>
 
       {/* Scrollable Task Section */}
