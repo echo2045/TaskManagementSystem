@@ -178,7 +178,7 @@ export default function TaskCard({
               color: '#555',
               width: '130px'
             }}>
-              {task.owner_name}
+              Owner: {task.owner_name}
             </span>
             {extraName && (
               <span style={{
@@ -296,7 +296,7 @@ export default function TaskCard({
           wasExpired={wasExpired}
           onClose={() => {
             setShowDetails(false);
-            getAssignees(task.task_id).then(setAssignees); // ✅ sync with modal changes
+            getAssignees(task.task_id).then(setAssignees);
           }}
         />
       )}

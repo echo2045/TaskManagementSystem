@@ -8,12 +8,15 @@ import {
   removeAssignee
 } from '../api/tasks';
 import { interiorColors } from '../utils/getTaskColor';
+import { FiHelpCircle } from 'react-icons/fi';
+import EisenhowerHelpModal from './EisenhowerHelpModal';
 
 export default function DelegateModal({ taskId, onClose }) {
   const { user } = useContext(AuthContext);
   const [assignees, setAssignees] = useState([]);
   const [available, setAvailable] = useState([]);
-  const [pendingAssign, setPendingAssign] = useState({}); // userId: {importance, urgency}
+  const [pendingAssign, setPendingAssign] = useState({});
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     fetchAssignees();
@@ -73,7 +76,12 @@ export default function DelegateModal({ taskId, onClose }) {
     <div style={overlay}>
       <div style={{ ...modalContent, background: modalBg }}>
         <button onClick={onClose} style={closeBtn}>×</button>
-        <h2>Delegate Task</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2>Delegate Task</h2>
+          <button onClick={() => setShowHelp(true)} style={helpBtn}>
+            <FiHelpCircle size={22} />
+          </button>
+        </div>
 
         <h3 style={{ marginTop: '1rem' }}>Current Assignees</h3>
         <div style={scrollContainer}>
@@ -99,7 +107,13 @@ export default function DelegateModal({ taskId, onClose }) {
 
         <hr style={{ margin: '1rem 0' }} />
 
-        <h3>Available to Assign</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <h3>Available to Assign</h3>
+          <button onClick={() => setShowHelp(true)} style={helpBtnInline}>
+            <FiHelpCircle size={18} />
+          </button>
+        </div>
+
         <div style={scrollContainer}>
           {available.length === 0 ? (
             <p>None available.</p>
@@ -154,6 +168,11 @@ export default function DelegateModal({ taskId, onClose }) {
             </div>
           ))}
         </div>
+
+        {/* Reusable Eisenhower Modal */}
+        {showHelp && (
+          <EisenhowerHelpModal visible={true} onClose={() => setShowHelp(false)} />
+        )}
       </div>
     </div>
   );
@@ -174,7 +193,7 @@ const modalContent = {
   position: 'relative',
   padding: '1.5rem',
   borderRadius: '8px',
-  width: '450px',
+  width: '480px',
   maxHeight: '80vh',
   overflow: 'hidden',
   boxSizing: 'border-box'
@@ -188,6 +207,21 @@ const closeBtn = {
   border: 'none',
   fontSize: '1.5rem',
   cursor: 'pointer'
+};
+
+const helpBtn = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  color: '#333'
+};
+
+const helpBtnInline = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  padding: 0,
+  margin: 0
 };
 
 const item = {

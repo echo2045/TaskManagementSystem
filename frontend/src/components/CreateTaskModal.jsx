@@ -1,9 +1,11 @@
 // src/components/CreateTaskModal.jsx
 import React, { useState, useEffect, useContext } from 'react';
+import { FaQuestionCircle } from 'react-icons/fa';
 import { AuthContext } from '../AuthContext';
 import { createTask } from '../api/tasks';
 import { getAllProjects } from '../api/projects';
 import { getAllAreas } from '../api/areas';
+import EisenhowerHelpModal from './EisenhowerHelpModal';
 
 export default function CreateTaskModal({ visible, onClose, ownerId, initialTitle = '' }) {
   const { user } = useContext(AuthContext);
@@ -18,8 +20,9 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
   });
   const [projects, setProjects] = useState([]);
   const [areas, setAreas] = useState([]);
-  const [taskType, setTaskType] = useState(null); // 'project', 'area', or null
+  const [taskType, setTaskType] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -63,7 +66,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
   };
 
   const handleTypeChange = (type) => {
-    setTaskType(prev => prev === type ? null : type); // toggle behavior
+    setTaskType(prev => prev === type ? null : type);
     setForm(prev => ({
       ...prev,
       project_id: type === 'project' ? prev.project_id : null,
@@ -144,7 +147,6 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
         <h2>Create Task</h2>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {/* Title - Readonly */}
           <div>
             <label>Title</label>
             <input
@@ -160,18 +162,16 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
             />
           </div>
 
-          {/* Description */}
           <div>
             <label>Description</label>
             <textarea
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              rows={3}
-              style={{ width: '100%', padding: '0.5rem' }}
+              rows={5}
+              style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
             />
           </div>
 
-          {/* Deadline */}
           <div>
             <label>Deadline</label>
             <input
@@ -183,10 +183,8 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
             />
           </div>
 
-          {/* Role-based Type Selector */}
           {renderTypeSelector()}
 
-          {/* Project Dropdown */}
           {taskType === 'project' && (
             <div>
               <label>Select Project</label>
@@ -206,7 +204,6 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
             </div>
           )}
 
-          {/* Area Dropdown */}
           {taskType === 'area' && (
             <div>
               <label>Select Area</label>
@@ -226,9 +223,15 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
             </div>
           )}
 
-          {/* Priority Sliders */}
           <div>
-            <label>Importance: {form.importance}</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label>Importance: {form.importance}</label>
+              <FaQuestionCircle
+                onClick={() => setShowHelp(true)}
+                title="What do these scores mean?"
+                style={{ color: '#555', cursor: 'pointer' }}
+              />
+            </div>
             <input
               type="range"
               min={1} max={10}
@@ -249,7 +252,6 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
             />
           </div>
 
-          {/* Confirm Button */}
           <button
             onClick={handleSubmit}
             disabled={isSubmitDisabled || loading}
@@ -267,6 +269,8 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
             {loading ? 'Saving…' : 'Create Task'}
           </button>
         </div>
+
+        <EisenhowerHelpModal visible={showHelp} onClose={() => setShowHelp(false)} />
       </div>
     </div>
   );
@@ -288,9 +292,9 @@ const overlay = {
 const modal = {
   position: 'relative',
   background: '#cccccc',
-  padding: '2rem',
-  borderRadius: '8px',
-  width: '400px',
+  padding: '2.5rem',
+  borderRadius: '10px',
+  width: '500px',
   boxSizing: 'border-box'
 };
 
