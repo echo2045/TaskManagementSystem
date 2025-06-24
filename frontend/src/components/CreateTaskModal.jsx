@@ -13,6 +13,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
     title: initialTitle,
     description: '',
     deadline: '',
+    start_date: '',
     importance: 3,
     urgency: 3,
     project_id: null,
@@ -26,10 +27,12 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
 
   useEffect(() => {
     if (visible) {
+      const today = new Date().toLocaleDateString('en-CA');
       setForm({
         title: initialTitle,
         description: '',
         deadline: '',
+        start_date: today,
         importance: 3,
         urgency: 3,
         project_id: null,
@@ -52,10 +55,26 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
 
   if (!visible) return null;
 
+  const toUtcIsoDate = (dateStr) => {
+    if (!dateStr) return null;
+    const localDate = new Date(dateStr);
+    localDate.setUTCHours(0, 0, 0, 0);
+    return localDate.toISOString();
+  };
+
   const handleSubmit = async () => {
     try {
       setLoading(true);
-      await createTask({ ...form, owner_id: ownerId });
+      const isoStartDate = toUtcIsoDate(form.start_date);
+      const payload = {
+        ...form,
+        owner_id: ownerId,
+        start_date: isoStartDate,
+        deadline: form.deadline ? new Date(form.deadline).toISOString() : null,
+        project_id: taskType === 'project' ? form.project_id : null,
+        area_id: taskType === 'area' ? form.area_id : null
+      };
+      await createTask(payload);
       onClose();
     } catch (err) {
       console.error('CreateTask error', err);
@@ -81,19 +100,11 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
           <label>Is this task part of a project or area?</label>
           <div style={{ display: 'flex', gap: '1rem' }}>
             <label>
-              <input
-                type="checkbox"
-                checked={taskType === 'project'}
-                onChange={() => handleTypeChange('project')}
-              />
+              <input type="checkbox" checked={taskType === 'project'} onChange={() => handleTypeChange('project')} />
               Project
             </label>
             <label>
-              <input
-                type="checkbox"
-                checked={taskType === 'area'}
-                onChange={() => handleTypeChange('area')}
-              />
+              <input type="checkbox" checked={taskType === 'area'} onChange={() => handleTypeChange('area')} />
               Area
             </label>
           </div>
@@ -103,32 +114,20 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
       return (
         <>
           <label>Is this task part of a project?</label>
-          <div>
-            <label>
-              <input
-                type="checkbox"
-                checked={taskType === 'project'}
-                onChange={() => handleTypeChange('project')}
-              />
-              Yes (Project)
-            </label>
-          </div>
+          <label>
+            <input type="checkbox" checked={taskType === 'project'} onChange={() => handleTypeChange('project')} />
+            Yes (Project)
+          </label>
         </>
       );
     } else if (user.role === 'hr') {
       return (
         <>
           <label>Is this task part of an area?</label>
-          <div>
-            <label>
-              <input
-                type="checkbox"
-                checked={taskType === 'area'}
-                onChange={() => handleTypeChange('area')}
-              />
-              Yes (Area)
-            </label>
-          </div>
+          <label>
+            <input type="checkbox" checked={taskType === 'area'} onChange={() => handleTypeChange('area')} />
+            Yes (Area)
+          </label>
         </>
       );
     }
@@ -153,12 +152,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
               type="text"
               value={form.title}
               readOnly
-              style={{
-                width: '100%',
-                padding: '0.5rem',
-                background: '#eee',
-                cursor: 'not-allowed'
-              }}
+              style={{ width: '100%', padding: '0.5rem', background: '#eee', cursor: 'not-allowed' }}
             />
           </div>
 
@@ -183,6 +177,17 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
             />
           </div>
 
+          <div>
+            <label>Start Date</label>
+            <input
+              type="date"
+              value={form.start_date}
+              onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+              required
+              style={{ width: '100%', padding: '0.5rem' }}
+            />
+          </div>
+
           {renderTypeSelector()}
 
           {taskType === 'project' && (
@@ -196,9 +201,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
               >
                 <option value="" disabled>Select a project</option>
                 {projects.map(p => (
-                  <option key={p.project_id} value={p.project_id}>
-                    {p.name}
-                  </option>
+                  <option key={p.project_id} value={p.project_id}>{p.name}</option>
                 ))}
               </select>
             </div>
@@ -215,9 +218,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
               >
                 <option value="" disabled>Select an area</option>
                 {areas.map(a => (
-                  <option key={a.area_id} value={a.area_id}>
-                    {a.name}
-                  </option>
+                  <option key={a.area_id} value={a.area_id}>{a.name}</option>
                 ))}
               </select>
             </div>
@@ -226,11 +227,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <label>Importance: {form.importance}</label>
-              <FaQuestionCircle
-                onClick={() => setShowHelp(true)}
-                title="What do these scores mean?"
-                style={{ color: '#555', cursor: 'pointer' }}
-              />
+              <FaQuestionCircle onClick={() => setShowHelp(true)} title="What do these scores mean?" style={{ color: '#555', cursor: 'pointer' }} />
             </div>
             <input
               type="range"
@@ -278,10 +275,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
 
 const overlay = {
   position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
+  top: 0, left: 0, right: 0, bottom: 0,
   background: 'rgba(0,0,0,0.5)',
   display: 'flex',
   justifyContent: 'center',

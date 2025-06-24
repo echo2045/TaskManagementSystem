@@ -1,3 +1,4 @@
+// src/components/DelegateModal.jsx
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../AuthContext';
 import { getSupervisees, getUsers } from '../api/users';
@@ -34,14 +35,15 @@ export default function DelegateModal({ taskId, onClose }) {
     const all = await loader();
     const assignedIds = new Set(assignedList.map(a => a.user_id));
     setAvailable(
-      all.filter(u => !assignedIds.has(u.user_id) && u.user_id !== user.user_id) // ✅ Prevent self-assignment
+      all.filter(u => !assignedIds.has(u.user_id) && u.user_id !== user.user_id)
     );
   };
 
   const handleAddClick = (u) => {
+    const today = new Date().toLocaleDateString('en-CA');
     setPendingAssign(prev => ({
       ...prev,
-      [u.user_id]: { importance: 5, urgency: 5 }
+      [u.user_id]: { importance: 5, urgency: 5, start_date: today }
     }));
   };
 
@@ -55,9 +57,28 @@ export default function DelegateModal({ taskId, onClose }) {
     }));
   };
 
+  const handleDateChange = (userId, value) => {
+    setPendingAssign(prev => ({
+      ...prev,
+      [userId]: {
+        ...prev[userId],
+        start_date: value
+      }
+    }));
+  };
+
+  const toUtcIsoDate = (dateStr) => {
+    if (!dateStr) return null;
+    const localDate = new Date(dateStr);
+    localDate.setUTCHours(0, 0, 0, 0);
+    return localDate.toISOString();
+  };
+
   const handleConfirmAssign = async (u) => {
-    const { importance, urgency } = pendingAssign[u.user_id];
-    await addAssignee(taskId, u.user_id, importance, urgency);
+    const { importance, urgency, start_date } = pendingAssign[u.user_id];
+    if (!start_date) return alert('Start date required');
+    const isoDate = toUtcIsoDate(start_date);
+    await addAssignee(taskId, u.user_id, importance, urgency, isoDate);
     setPendingAssign(prev => {
       const updated = { ...prev };
       delete updated[u.user_id];
@@ -95,12 +116,7 @@ export default function DelegateModal({ taskId, onClose }) {
                 <span style={scoreBox}>
                   {(u.importance ?? '—')} / {(u.urgency ?? '—')}
                 </span>
-                <button
-                  onClick={() => handleRemove(u)}
-                  style={removeBtn}
-                >
-                  −
-                </button>
+                <button onClick={() => handleRemove(u)} style={removeBtn}>−</button>
               </div>
             ))
           )}
@@ -123,12 +139,7 @@ export default function DelegateModal({ taskId, onClose }) {
               <div style={item}>
                 <span>{u.full_name}</span>
                 {pendingAssign[u.user_id] ? null : (
-                  <button
-                    onClick={() => handleAddClick(u)}
-                    style={addBtn}
-                  >
-                    ＋
-                  </button>
+                  <button onClick={() => handleAddClick(u)} style={addBtn}>＋</button>
                 )}
               </div>
 
@@ -141,9 +152,7 @@ export default function DelegateModal({ taskId, onClose }) {
                       min="1"
                       max="10"
                       value={pendingAssign[u.user_id].importance}
-                      onChange={e =>
-                        handleSliderChange(u.user_id, 'importance', Number(e.target.value))
-                      }
+                      onChange={e => handleSliderChange(u.user_id, 'importance', Number(e.target.value))}
                     />
                   </label>
                   <label>
@@ -153,17 +162,19 @@ export default function DelegateModal({ taskId, onClose }) {
                       min="1"
                       max="10"
                       value={pendingAssign[u.user_id].urgency}
-                      onChange={e =>
-                        handleSliderChange(u.user_id, 'urgency', Number(e.target.value))
-                      }
+                      onChange={e => handleSliderChange(u.user_id, 'urgency', Number(e.target.value))}
                     />
                   </label>
-                  <button
-                    onClick={() => handleConfirmAssign(u)}
-                    style={confirmBtn}
-                  >
-                    Confirm
-                  </button>
+                  <label>
+                    Start Date:
+                    <input
+                      type="date"
+                      value={pendingAssign[u.user_id].start_date}
+                      onChange={e => handleDateChange(u.user_id, e.target.value)}
+                      style={{ marginLeft: '0.5rem' }}
+                    />
+                  </label>
+                  <button onClick={() => handleConfirmAssign(u)} style={confirmBtn}>Confirm</button>
                 </div>
               )}
             </div>

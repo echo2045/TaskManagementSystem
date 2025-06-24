@@ -1,4 +1,3 @@
-// src/controllers/taskController.js
 const pool = require('../db');
 
 // GET /api/tasks
@@ -8,6 +7,7 @@ const getAllTasks = async (req, res) => {
       SELECT
         t.task_id, t.title, t.description, t.deadline,
         t.importance, t.urgency, t.status, t.owner_id,
+        t.start_date, t.created_at,
         t.project_id, p.name AS project_name,
         t.area_id, a.name AS area_name,
         u.full_name AS owner_name
@@ -27,6 +27,7 @@ const getAllTasks = async (req, res) => {
         ta.importance AS assignee_importance,
         ta.urgency AS assignee_urgency,
         ta.is_completed,
+        ta.start_date,
         d.full_name AS delegated_by
       FROM task_assignments ta
       JOIN users u ON ta.assignee_id = u.user_id
@@ -42,7 +43,8 @@ const getAllTasks = async (req, res) => {
         delegated_by: row.delegated_by || null,
         importance: row.assignee_importance,
         urgency: row.assignee_urgency,
-        is_completed: row.is_completed
+        is_completed: row.is_completed,
+        start_date: row.start_date
       });
     });
 
@@ -65,9 +67,11 @@ const getArchivedTasksForUser = async (req, res) => {
   try {
     const taskResult = await pool.query(`
       SELECT
-        t.task_id, t.title, t.description, t.deadline, t.importance, t.urgency,
-        t.status, t.project_id, t.area_id,
-        u.full_name AS owner_name, t.owner_id
+        t.task_id, t.title, t.description, t.deadline,
+        t.importance, t.urgency, t.status, t.owner_id,
+        t.start_date, t.created_at,
+        t.project_id, t.area_id,
+        u.full_name AS owner_name
       FROM tasks t
       JOIN users u ON t.owner_id = u.user_id
       WHERE (t.status = 'completed' OR t.deadline < NOW())
@@ -82,6 +86,7 @@ const getArchivedTasksForUser = async (req, res) => {
         ta.importance AS assignee_importance,
         ta.urgency AS assignee_urgency,
         ta.is_completed,
+        ta.start_date,
         d.full_name AS delegated_by
       FROM task_assignments ta
       JOIN users u ON ta.assignee_id = u.user_id
@@ -90,16 +95,15 @@ const getArchivedTasksForUser = async (req, res) => {
 
     const assigneesByTask = {};
     assigneeResult.rows.forEach(row => {
-      if (!assigneesByTask[row.task_id]) {
-        assigneesByTask[row.task_id] = [];
-      }
+      if (!assigneesByTask[row.task_id]) assigneesByTask[row.task_id] = [];
       assigneesByTask[row.task_id].push({
         user_id: row.user_id,
         full_name: row.full_name,
         delegated_by: row.delegated_by || null,
         importance: row.assignee_importance,
         urgency: row.assignee_urgency,
-        is_completed: row.is_completed
+        is_completed: row.is_completed,
+        start_date: row.start_date
       });
     });
 
@@ -125,15 +129,17 @@ const getArchivedTasksForUser = async (req, res) => {
 const createTask = async (req, res) => {
   const {
     title, description, deadline, importance, urgency,
-    owner_id, project_id = null, area_id = null
+    owner_id, project_id = null, area_id = null, start_date = null
   } = req.body;
 
   try {
+    const normalizedDate = start_date ? new Date(start_date).toISOString().split('T')[0] : null;
+
     const result = await pool.query(`
-      INSERT INTO tasks (title, description, deadline, importance, urgency, owner_id, status, project_id, area_id)
-      VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8)
+      INSERT INTO tasks (title, description, deadline, importance, urgency, owner_id, status, project_id, area_id, start_date)
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9)
       RETURNING *
-    `, [title, description, deadline, importance, urgency, owner_id, project_id, area_id]);
+    `, [title, description, deadline, importance, urgency, owner_id, project_id, area_id, normalizedDate]);
 
     res.json(result.rows[0]);
   } catch (err) {
@@ -184,6 +190,7 @@ const getTaskAssignees = async (req, res) => {
         ta.importance AS assignee_importance,
         ta.urgency AS assignee_urgency,
         ta.is_completed,
+        ta.start_date,
         d.full_name AS delegated_by
       FROM task_assignments ta
       JOIN users u ON ta.assignee_id = u.user_id
@@ -198,7 +205,8 @@ const getTaskAssignees = async (req, res) => {
       importance: row.assignee_importance,
       urgency: row.assignee_urgency,
       is_completed: row.is_completed,
-      delegated_by: row.delegated_by
+      delegated_by: row.delegated_by,
+      start_date: row.start_date
     }));
 
     res.json(formatted);
@@ -211,7 +219,7 @@ const getTaskAssignees = async (req, res) => {
 // POST /api/tasks/:id/assignees
 const assignTask = async (req, res) => {
   const { id } = req.params;
-  const { user_id, importance, urgency } = req.body;
+  const { user_id, importance, urgency, start_date } = req.body;
   const assigned_by = req.user?.user_id || 1;
 
   try {
@@ -224,27 +232,12 @@ const assignTask = async (req, res) => {
       return res.status(400).json({ error: 'User is already assigned to this task.' });
     }
 
-    await pool.query(`
-      INSERT INTO task_assignments (task_id, assignee_id, assigned_by, importance, urgency)
-      VALUES ($1, $2, $3, $4, $5)
-    `, [id, user_id, assigned_by, importance, urgency]);
-
-    const { rows: taskInfo } = await pool.query(
-      'SELECT title FROM tasks WHERE task_id = $1',
-      [id]
-    );
-    const taskTitle = taskInfo[0]?.title || '(untitled)';
-
-    const { rows: assignerInfo } = await pool.query(
-      'SELECT full_name FROM users WHERE user_id = $1',
-      [assigned_by]
-    );
-    const assignerName = assignerInfo[0]?.full_name || 'Someone';
+    const normalizedStart = start_date ? new Date(start_date).toISOString().split('T')[0] : null;
 
     await pool.query(`
-      INSERT INTO notifications (user_id, message)
-      VALUES ($1, $2)
-    `, [user_id, `${assignerName} assigned you "${taskTitle}"`]);
+      INSERT INTO task_assignments (task_id, assignee_id, assigned_by, importance, urgency, start_date)
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `, [id, user_id, assigned_by, importance, urgency, normalizedStart]);
 
     const { rows: updated } = await pool.query(`
       SELECT u.user_id, u.full_name, u.email
@@ -257,6 +250,49 @@ const assignTask = async (req, res) => {
   } catch (err) {
     console.error('Error assigning task:', err.message);
     res.status(500).json({ error: err.message });
+  }
+};
+
+// PATCH /api/tasks/:taskId/assignment/:userId/start-date
+const updateAssignmentStartDate = async (req, res) => {
+  const { taskId, userId } = req.params;
+  const { start_date } = req.body;
+  const requestorId = req.user?.user_id || 1;
+
+  try {
+    const check = await pool.query(`
+      SELECT ta.assigned_by, t.deadline
+      FROM task_assignments ta
+      JOIN tasks t ON t.task_id = ta.task_id
+      WHERE ta.task_id = $1 AND ta.assignee_id = $2
+    `, [taskId, userId]);
+
+    if (check.rows.length === 0) {
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
+
+    const { assigned_by, deadline } = check.rows[0];
+
+    if (assigned_by !== requestorId) {
+      return res.status(403).json({ error: 'Only the assigner can update the start date.' });
+    }
+
+    if (new Date(start_date) > new Date(deadline)) {
+      return res.status(400).json({ error: 'Start date cannot be after the task deadline.' });
+    }
+
+    const normalizedStart = new Date(start_date).toISOString().split('T')[0];
+
+    await pool.query(`
+      UPDATE task_assignments
+      SET start_date = $1
+      WHERE task_id = $2 AND assignee_id = $3
+    `, [normalizedStart, taskId, userId]);
+
+    res.status(200).json({ message: 'Start date updated successfully.' });
+  } catch (err) {
+    console.error('Error updating start date:', err.message);
+    res.status(500).json({ error: 'Failed to update start date' });
   }
 };
 
@@ -288,12 +324,12 @@ const markAssignmentCompleted = async (req, res) => {
   const { is_completed } = req.body;
 
   try {
-    await pool.query(
-      `UPDATE task_assignments
-       SET is_completed = $1
-       WHERE task_id = $2 AND assignee_id = $3`,
-      [is_completed, taskId, userId]
-    );
+    await pool.query(`
+      UPDATE task_assignments
+      SET is_completed = $1
+      WHERE task_id = $2 AND assignee_id = $3
+    `, [is_completed, taskId, userId]);
+
     res.sendStatus(200);
   } catch (err) {
     console.error("Error updating assignment completion", err);
@@ -310,5 +346,6 @@ module.exports = {
   getTaskAssignees,
   assignTask,
   unassignTask,
-  markAssignmentCompleted
+  markAssignmentCompleted,
+  updateAssignmentStartDate
 };

@@ -11,7 +11,8 @@ const {
   getTaskAssignees,
   assignTask,
   unassignTask,
-  markAssignmentCompleted // ✅ Import was missing
+  markAssignmentCompleted,
+  updateAssignmentStartDate // ✅ new
 } = require('../controllers/taskController');
 
 // Main task endpoints
@@ -25,8 +26,7 @@ router.delete('/:id', authenticate, deleteTask);
 router.get('/:id/assignees', authenticate, getTaskAssignees);
 router.post('/:id/assignees', authenticate, assignTask);
 router.delete('/:id/assignees/:userId', authenticate, unassignTask);
-
-// ✅ NEW: Mark assignee completion
 router.patch('/:taskId/assignment/:userId/complete', authenticate, markAssignmentCompleted);
+router.patch('/:taskId/assignment/:userId/start-date', authenticate, updateAssignmentStartDate); // ✅ new
 
 module.exports = router;

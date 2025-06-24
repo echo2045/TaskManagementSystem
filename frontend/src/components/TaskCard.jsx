@@ -1,3 +1,4 @@
+// src/components/TaskCard.jsx
 import React, { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../AuthContext';
 import {
@@ -9,7 +10,8 @@ import {
   getAssignees,
   updateTask,
   deleteTask,
-  markAssigneeComplete
+  markAssigneeComplete,
+  updateAssignmentStartDate
 } from '../api/tasks';
 import DelegateModal from './DelegateModal';
 import TaskDetailsModal from './TaskDetailsModal';
@@ -122,6 +124,27 @@ export default function TaskCard({
 
   const isAssigneeCompleted = assigneeEntry?.is_completed ?? false;
 
+  const getStartDate = () => {
+    const raw = viewIsAssignee && assigneeEntry?.start_date
+      ? assigneeEntry.start_date
+      : task.start_date;
+    if (!raw) return '';
+    return new Date(raw).toLocaleDateString('en-CA');
+  };
+
+  const [localStartDate, setLocalStartDate] = useState(getStartDate());
+  const isEditableStartDate = viewIsAssignee && delegateEntry?.delegated_by === authUser.full_name;
+
+  const handleStartDateChange = async (e) => {
+    const newDate = e.target.value;
+    setLocalStartDate(newDate);
+    try {
+      await updateAssignmentStartDate(task.task_id, viewingUserId, newDate);
+    } catch (err) {
+      console.error('Failed to update start date:', err);
+    }
+  };
+
   return (
     <>
       <div
@@ -140,7 +163,6 @@ export default function TaskCard({
           gap: '1rem'
         }}
       >
-        {/* Left Column */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -174,11 +196,40 @@ export default function TaskCard({
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              fontSize: '0.85rem',
+              fontSize: '1rem',
               color: '#555',
               width: '130px'
             }}>
               Owner: {task.owner_name}
+            </span>
+            <span style={{
+              fontSize: '1rem',
+              color: '#555',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              width: '135px'
+            }}>
+              Start:{' '}
+              {isEditableStartDate ? (
+                <input
+                  type="date"
+                  value={localStartDate}
+                  onChange={handleStartDateChange}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    fontSize: '0.95rem',
+                    color: '#333',
+                    border: '1px solid #aaa',
+                    borderRadius: '4px',
+                    padding: '2px 4px',
+                    background: '#fff',
+                    width: '125px'
+                  }}
+                />
+              ) : (
+                getStartDate()
+              )}
             </span>
             {extraName && (
               <span style={{
@@ -195,12 +246,7 @@ export default function TaskCard({
           </div>
         </div>
 
-        {/* Center Tag */}
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          justifyContent: 'center'
-        }}>
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           {!showProjectNameInstead && !showAreaNameInstead && scopeTag && (
             <span style={{
               fontSize: '0.7rem',
@@ -214,7 +260,6 @@ export default function TaskCard({
           )}
         </div>
 
-        {/* Right Column */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
