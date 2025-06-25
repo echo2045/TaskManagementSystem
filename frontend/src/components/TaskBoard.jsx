@@ -17,6 +17,7 @@ export default function TaskBoard({ filterUser }) {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [groupByStartDate, setGroupByStartDate] = useState(false);
   const [superviseeIds, setSuperviseeIds] = useState([]);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -86,15 +87,18 @@ export default function TaskBoard({ filterUser }) {
     .filter(t => {
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
       if (typeFilter && getTaskColor(t.importance, t.urgency) !== typeFilter) return false;
-      if (dateFilter && new Date(t.deadline).toLocaleDateString() !== new Date(dateFilter).toLocaleDateString()) return false;
+      const compareDate = groupByStartDate ? t.start_date : t.deadline;
+      if (dateFilter && new Date(compareDate).toLocaleDateString() !== new Date(dateFilter).toLocaleDateString()) return false;
       return true;
     });
 
-  const grouped = visible.reduce((acc, t) => {
-    const key = new Date(t.deadline).toLocaleDateString();
-    (acc[key] = acc[key] || []).push(t);
-    return acc;
-  }, {});
+  const grouped = visible
+    .sort((a, b) => new Date(groupByStartDate ? a.start_date : a.deadline) - new Date(groupByStartDate ? b.start_date : b.deadline))
+    .reduce((acc, t) => {
+      const key = new Date(groupByStartDate ? t.start_date : t.deadline).toLocaleDateString();
+      (acc[key] = acc[key] || []).push(t);
+      return acc;
+    }, {});
 
   const canCreate = viewingUserId === user.user_id;
 
@@ -168,6 +172,17 @@ export default function TaskBoard({ filterUser }) {
             />
             <button onClick={() => setDateFilter('')} style={{ padding: '0 0.75rem' }}>Clear</button>
           </div>
+        </div>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <label style={{ fontSize: '0.9rem' }}>Group By</label>
+          <select
+            value={groupByStartDate ? 'start' : 'deadline'}
+            onChange={e => setGroupByStartDate(e.target.value === 'start')}
+            style={{ padding: '0.5rem' }}
+          >
+            <option value="deadline">Deadline</option>
+            <option value="start">Start Date</option>
+          </select>
         </div>
       </div>
 
