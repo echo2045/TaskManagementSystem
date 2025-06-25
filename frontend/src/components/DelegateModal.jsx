@@ -17,6 +17,7 @@ export default function DelegateModal({ taskId, onClose }) {
   const [available, setAvailable] = useState([]);
   const [pendingAssign, setPendingAssign] = useState({});
   const [showHelp, setShowHelp] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchAssignees();
@@ -92,6 +93,10 @@ export default function DelegateModal({ taskId, onClose }) {
     fetchAssignees();
   };
 
+  const filteredAvailable = available.filter(u =>
+    u.full_name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const modalBg = interiorColors['delegate'];
 
   return (
@@ -116,6 +121,9 @@ export default function DelegateModal({ taskId, onClose }) {
                 <span style={scoreBox}>
                   {(u.importance ?? '—')} / {(u.urgency ?? '—')}
                 </span>
+                <span style={{ fontSize: '0.85rem', marginLeft: '0.5rem' }}>
+                  {u.start_date ? new Date(u.start_date).toLocaleDateString('en-CA') : '—'}
+                </span>
                 <button onClick={() => handleRemove(u)} style={removeBtn}>−</button>
               </div>
             ))
@@ -131,10 +139,18 @@ export default function DelegateModal({ taskId, onClose }) {
           </button>
         </div>
 
+        <input
+          type="text"
+          placeholder="Search by name..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          style={searchInput}
+        />
+
         <div style={scrollContainer}>
-          {available.length === 0 ? (
-            <p>None available.</p>
-          ) : available.map(u => (
+          {filteredAvailable.length === 0 ? (
+            <p>No matching users found.</p>
+          ) : filteredAvailable.map(u => (
             <div key={u.user_id} style={{ marginBottom: '1rem' }}>
               <div style={item}>
                 <span>{u.full_name}</span>
@@ -291,4 +307,12 @@ const scoreBox = {
   flex: '0 0 80px',
   textAlign: 'center',
   fontWeight: 'bold'
+};
+
+const searchInput = {
+  width: '100%',
+  padding: '0.4rem 0.5rem',
+  marginBottom: '0.8rem',
+  borderRadius: '4px',
+  border: '1px solid #ccc'
 };

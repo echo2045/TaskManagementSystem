@@ -64,6 +64,9 @@ export default function TaskDetailsModal({
         <p style={{ margin: '0.5rem 0' }}>
           <strong>Deadline:</strong> {new Date(task.deadline).toLocaleString()}
         </p>
+        <p style={{ margin: '0.5rem 0' }}>
+          <strong>Start Date:</strong> {task.start_date ? new Date(task.start_date).toLocaleDateString('en-CA') : '—'}
+        </p>
 
         {badge && (
           <span style={{
@@ -117,7 +120,7 @@ export default function TaskDetailsModal({
                     {a.full_name}
                   </span>
                   <span style={{ marginLeft: '1rem', fontSize: '0.85rem' }}>
-                    {a.name}
+                    {a.start_date ? new Date(a.start_date).toLocaleDateString('en-CA') : '—'}
                   </span>
                   <span style={{ marginLeft: '1rem', fontSize: '0.85rem', fontWeight: 'bold' }}>
                     {a.importance ?? '—'} / {a.urgency ?? '—'}
