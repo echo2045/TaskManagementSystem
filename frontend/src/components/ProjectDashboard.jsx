@@ -18,6 +18,7 @@ export default function ProjectDashboard({ filterUser }) {
   const [typeFilter, setTypeFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   const [projectFilter, setProjectFilter] = useState('');
+  const [groupBy, setGroupBy] = useState('deadline');
   const [superviseeIds, setSuperviseeIds] = useState([]);
 
   const viewingUserId = filterUser?.user_id || user.user_id;
@@ -86,15 +87,21 @@ export default function ProjectDashboard({ filterUser }) {
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
       if (typeFilter && getTaskColor(t.importance, t.urgency) !== typeFilter) return false;
       if (projectFilter && t.project_id !== Number(projectFilter)) return false;
-      if (dateFilter && new Date(t.deadline).toLocaleDateString() !== new Date(dateFilter).toLocaleDateString()) return false;
+      const baseDate = groupBy === 'start_date' ? t.start_date : t.deadline;
+      if (dateFilter && new Date(baseDate).toLocaleDateString() !== new Date(dateFilter).toLocaleDateString()) return false;
       return true;
     });
 
   const grouped = visible.reduce((acc, t) => {
-    const key = new Date(t.deadline).toLocaleDateString();
+    const baseDate = groupBy === 'start_date' ? t.start_date : t.deadline;
+    const key = new Date(baseDate).toLocaleDateString();
     (acc[key] = acc[key] || []).push(t);
     return acc;
   }, {});
+
+  const sortedGroups = Object.entries(grouped).sort(
+    ([a], [b]) => new Date(a) - new Date(b)
+  );
 
   return (
     <div style={{
@@ -130,6 +137,11 @@ export default function ProjectDashboard({ filterUser }) {
           ))}
         </select>
 
+        <select value={groupBy} onChange={e => setGroupBy(e.target.value)} style={{ height: '2.5rem' }}>
+          <option value="deadline">Group by Deadline</option>
+          <option value="start_date">Group by Start Date</option>
+        </select>
+
         <input
           type="date"
           value={dateFilter}
@@ -139,7 +151,7 @@ export default function ProjectDashboard({ filterUser }) {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {Object.entries(grouped).map(([date, items]) => (
+        {sortedGroups.map(([date, items]) => (
           <div key={date}>
             <h4>{date}</h4>
             {items.map(t => (

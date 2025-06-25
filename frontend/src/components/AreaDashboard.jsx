@@ -14,6 +14,7 @@ export default function AreaDashboard({ viewingOwnOnly = false }) {
   const [typeFilter, setTypeFilter] = useState('');
   const [areaFilter, setAreaFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [groupBy, setGroupBy] = useState('deadline');
 
   const fetchTasks = async () => {
     try {
@@ -59,9 +60,19 @@ export default function AreaDashboard({ viewingOwnOnly = false }) {
   }
   if (dateFilter) {
     visible = visible.filter(t =>
-      new Date(t.deadline).toLocaleDateString() === new Date(dateFilter).toLocaleDateString()
+      new Date(t[groupBy]).toLocaleDateString() === new Date(dateFilter).toLocaleDateString()
     );
   }
+
+  const grouped = visible.reduce((acc, t) => {
+    const key = new Date(t[groupBy]).toLocaleDateString();
+    (acc[key] = acc[key] || []).push(t);
+    return acc;
+  }, {});
+
+  const sortedGroups = Object.entries(grouped).sort(
+    ([a], [b]) => new Date(a) - new Date(b)
+  );
 
   return (
     <div style={{
@@ -99,6 +110,11 @@ export default function AreaDashboard({ viewingOwnOnly = false }) {
           ))}
         </select>
 
+        <select value={groupBy} onChange={e => setGroupBy(e.target.value)} style={{ height: '2.5rem' }}>
+          <option value="deadline">Group by Deadline</option>
+          <option value="start_date">Group by Start Date</option>
+        </select>
+
         <input
           type="date"
           value={dateFilter}
@@ -109,13 +125,7 @@ export default function AreaDashboard({ viewingOwnOnly = false }) {
 
       {/* Scrollable Task Section */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {Object.entries(
-          visible.reduce((acc, t) => {
-            const key = new Date(t.deadline).toLocaleDateString();
-            (acc[key] = acc[key] || []).push(t);
-            return acc;
-          }, {})
-        ).map(([date, items]) => (
+        {sortedGroups.map(([date, items]) => (
           <div key={date}>
             <h4>{date}</h4>
             {items.map(t => {
