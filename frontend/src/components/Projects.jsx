@@ -65,12 +65,7 @@ export default function Projects() {
   };
 
   if (user.role !== 'manager') {
-    return (
-      <div style={{ padding: '1rem' }}>
-        <h1 style={{ fontSize: '2rem', margin: '0 0 0.5rem 0' }}>Projects</h1>
-        <ProjectDashboard viewingOwnOnly />
-      </div>
-    );
+    return <ProjectDashboard viewingOwnOnly />;
   }
 
   const filtered = projects
@@ -79,14 +74,11 @@ export default function Projects() {
 
   return (
     <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      {/* Section: Page Title */}
-      <div>
-        <h1 style={{ fontSize: '2rem', margin: '0 0 0.5rem 0' }}>Projects</h1>
-      </div>
+      <h1 style={{ fontSize: '2rem', margin: '0' }}>Projects</h1>
 
       {/* Section 1: Create */}
       <section>
-        <h2 style={{ marginTop: '0' }}>Add Project</h2>
+        <h2 style={{ marginTop: '0', marginBottom: '0.5rem' }}>Add Project</h2>
         <form onSubmit={handleCreate} style={{ display: 'flex', gap: '1rem' }}>
           <input
             value={newName}
@@ -103,21 +95,48 @@ export default function Projects() {
       {/* Section 2: Manage List */}
       <section>
         <h2>Manage Projects</h2>
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-          <input
-            placeholder="Search projects"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ padding: '0.5rem', flex: 2 }}
-          />
-          <button onClick={() => setShowActive(true)} disabled={showActive}>
-            Active
-          </button>
-          <button onClick={() => setShowActive(false)} disabled={!showActive}>
-            Archive
-          </button>
+
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', alignItems: 'flex-end' }}>
+          <div style={{ flex: 2 }}>
+            <label style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem', display: 'block' }}>
+              Search Project Tasks
+            </label>
+            <input
+              placeholder="Search projects"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ padding: '0.5rem', width: '100%' }}
+            />
+          </div>
+
+          {/* Tabs */}
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <div
+              onClick={() => setShowActive(true)}
+              style={{
+                cursor: 'pointer',
+                padding: '0.5rem 1rem',
+                borderBottom: showActive ? '2px solid black' : '2px solid transparent',
+                fontWeight: showActive ? 'bold' : 'normal'
+              }}
+            >
+              Active
+            </div>
+            <div
+              onClick={() => setShowActive(false)}
+              style={{
+                cursor: 'pointer',
+                padding: '0.5rem 1rem',
+                borderBottom: !showActive ? '2px solid black' : '2px solid transparent',
+                fontWeight: !showActive ? 'bold' : 'normal'
+              }}
+            >
+              Archive
+            </div>
+          </div>
         </div>
 
+        {/* Project List */}
         {filtered.map(p => (
           <div
             key={p.project_id}
