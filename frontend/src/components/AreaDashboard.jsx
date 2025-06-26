@@ -76,22 +76,31 @@ export default function AreaDashboard({ viewingOwnOnly = false }) {
 
   return (
     <div style={{
-      height: '100vh',
+      width: '100%',
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
-      padding: '1rem'
+      padding: 0
     }}>
-      <h3 style={{ marginBottom: '1rem' }}>Area Tasks</h3>
-
       {/* Filters */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', alignItems: 'flex-end' }}>
-        <input
-          placeholder="Search by task title"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{ flex: 2, padding: '0.5rem' }}
-        />
+      <div style={{
+        display: 'flex',
+        gap: '1rem',
+        marginBottom: '1rem',
+        alignItems: 'flex-end',
+        paddingRight: '1rem'
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 2 }}>
+          <label style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.2rem' }}>
+            Search Area Tasks
+          </label>
+          <input
+            placeholder="Search by task title"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ padding: '0.5rem' }}
+          />
+        </div>
 
         <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ height: '2.5rem' }}>
           <option value="">All Types</option>
@@ -123,7 +132,7 @@ export default function AreaDashboard({ viewingOwnOnly = false }) {
         />
       </div>
 
-      {/* Scrollable Task Section */}
+      {/* Task list */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {sortedGroups.map(([date, items]) => (
           <div key={date}>

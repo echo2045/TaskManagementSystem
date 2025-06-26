@@ -63,7 +63,12 @@ export default function Areas() {
   };
 
   if (user.role !== 'manager') {
-    return <AreaDashboard />;
+    return (
+      <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        <h1 style={{ fontSize: '2rem', margin: 0 }}>Areas</h1>
+        <AreaDashboard />
+      </div>
+    );
   }
 
   const filtered = areas
@@ -72,9 +77,11 @@ export default function Areas() {
 
   return (
     <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      <h1 style={{ fontSize: '2rem', margin: 0 }}>Areas</h1>
+
       {/* Section 1: Create */}
-      <section>
-        <h2>Add Area</h2>
+      <section style={{ marginTop: '-1rem' }}>
+        <h2 style={{ marginTop: 0 }}>Add Area</h2>
         <form onSubmit={handleCreate} style={{ display: 'flex', gap: '1rem' }}>
           <input
             value={newName}
@@ -127,7 +134,9 @@ export default function Areas() {
                 onChange={() => handleToggle(a.area_id, a.is_completed)}
               />
               <span style={{ fontWeight: 'bold' }}>{a.name}</span>
-              <span style={{ color: '#555', fontStyle: 'italic' }}>({a.created_by_name || ''})</span>
+              <span style={{ color: '#555', fontStyle: 'italic' }}>
+                ({a.created_by_name || ''})
+              </span>
             </div>
             <button onClick={() => handleDelete(a.area_id)} style={{ fontSize: '1.2rem' }}>
               🗑
@@ -138,7 +147,7 @@ export default function Areas() {
 
       {/* Section 3: Dashboard */}
       <section>
-        <AreaDashboard viewingOwnOnly />
+        <AreaDashboard />
       </section>
     </div>
   );
