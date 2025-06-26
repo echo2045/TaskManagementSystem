@@ -1,32 +1,39 @@
+// backend/src/routes/taskRoutes.js
 const express = require('express');
 const router = express.Router();
-const authenticate = require('../middleware/auth');
-
 const {
   getAllTasks,
   getArchivedTasksForUser,
   createTask,
   updateTask,
   deleteTask,
-  getTaskAssignees,
-  assignTask,
-  unassignTask,
-  markAssignmentCompleted,
-  updateAssignmentStartDate // ✅ new
+  getAssignees,
+  addAssignee,
+  removeAssignee,
+  markAssigneeComplete,
+  updateAssignmentStartDate,
+  updateTaskDetails
 } = require('../controllers/taskController');
+const { authenticate } = require('../middleware/auth');
 
-// Main task endpoints
-router.get('/', authenticate, getAllTasks);
-router.get('/archive/:id', authenticate, getArchivedTasksForUser);
-router.post('/', authenticate, createTask);
-router.patch('/:id', authenticate, updateTask);
-router.delete('/:id', authenticate, deleteTask);
+router.use(authenticate);
 
-// Assignee endpoints
-router.get('/:id/assignees', authenticate, getTaskAssignees);
-router.post('/:id/assignees', authenticate, assignTask);
-router.delete('/:id/assignees/:userId', authenticate, unassignTask);
-router.patch('/:taskId/assignment/:userId/complete', authenticate, markAssignmentCompleted);
-router.patch('/:taskId/assignment/:userId/start-date', authenticate, updateAssignmentStartDate); // ✅ new
+// Task CRUD
+router.get('/', getAllTasks);
+router.get('/archive/:user_id', getArchivedTasksForUser);
+router.post('/', createTask);
+router.patch('/:task_id', updateTask);
+router.put('/:task_id', updateTaskDetails); // 🔥 NEW
+
+router.delete('/:task_id', deleteTask);
+
+// Assignees
+router.get('/:task_id/assignees', getAssignees);
+router.post('/:task_id/assignees', addAssignee);
+router.delete('/:task_id/assignees/:user_id', removeAssignee);
+
+// Completion + Start date
+router.patch('/:task_id/assignment/:user_id/complete', markAssigneeComplete);
+router.patch('/:task_id/assignment/:user_id/start-date', updateAssignmentStartDate);
 
 module.exports = router;

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { getTaskColor, borderColors, interiorColors } from '../utils/getTaskColor';
 import { getAssignees, markAssigneeComplete } from '../api/tasks';
 import DelegateModal from './DelegateModal';
+import EditTaskModal from './EditTaskModal';
 import { AuthContext } from '../AuthContext';
 
 export default function TaskDetailsModal({
@@ -13,20 +14,22 @@ export default function TaskDetailsModal({
 }) {
   const { user } = useContext(AuthContext);
   const isOwner = user.user_id === task.owner_id;
+  const [taskState, setTaskState] = useState(task);
   const [assignees, setAssignees] = useState([]);
   const [showDelegate, setShowDelegate] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
 
   useEffect(() => {
-    if (getTaskColor(task.importance, task.urgency) === 'delegate') {
-      getAssignees(task.task_id)
+    if (getTaskColor(taskState.importance, taskState.urgency) === 'delegate') {
+      getAssignees(taskState.task_id)
         .then(setAssignees)
         .catch(console.error);
     }
-  }, [task]);
+  }, [taskState]);
 
   const handleToggleComplete = async (userId, checked) => {
     try {
-      await markAssigneeComplete(task.task_id, userId, checked);
+      await markAssigneeComplete(taskState.task_id, userId, checked);
       setAssignees(prev =>
         prev.map(a =>
           a.user_id === userId ? { ...a, is_completed: checked } : a
@@ -37,7 +40,7 @@ export default function TaskDetailsModal({
     }
   };
 
-  const type = getTaskColor(task.importance, task.urgency);
+  const type = getTaskColor(taskState.importance, taskState.urgency);
   const bgColor = interiorColors[type];
   const defaultBorder = borderColors[type];
   const effectiveBorder = (isOwner && assignees.length > 0 && type === 'delegate')
@@ -46,7 +49,7 @@ export default function TaskDetailsModal({
 
   let badge = null;
   if (isArchived) {
-    if (task.status === 'completed') {
+    if (taskState.status === 'completed') {
       badge = wasExpired
         ? { text: 'Late', color: '#FFB74D' }
         : { text: 'Complete', color: '#4caf50' };
@@ -59,13 +62,31 @@ export default function TaskDetailsModal({
     <div style={overlay}>
       <div style={{ ...modal, background: bgColor, border: `2px solid ${effectiveBorder}` }}>
         <button onClick={onClose} style={{ ...closeBtn, color: '#000' }}>×</button>
+        {isOwner && (
+          <button
+            onClick={() => setShowEdit(true)}
+            style={{
+              position: 'absolute',
+              top: '0.5rem',
+              right: '2.5rem',
+              background: '#000',
+              color: '#fff',
+              border: 'none',
+              padding: '0.25rem 0.5rem',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            ✎ Edit
+          </button>
+        )}
 
-        <h2 style={{ marginTop: 0 }}>{task.title}</h2>
+        <h2 style={{ marginTop: 0 }}>{taskState.title}</h2>
         <p style={{ margin: '0.5rem 0' }}>
-          <strong>Deadline:</strong> {new Date(task.deadline).toLocaleString()}
+          <strong>Deadline:</strong> {new Date(taskState.deadline).toLocaleString()}
         </p>
         <p style={{ margin: '0.5rem 0' }}>
-          <strong>Start Date:</strong> {task.start_date ? new Date(task.start_date).toLocaleDateString('en-CA') : '—'}
+          <strong>Start Date:</strong> {taskState.start_date ? new Date(taskState.start_date).toLocaleDateString('en-CA') : '—'}
         </p>
 
         {badge && (
@@ -92,7 +113,7 @@ export default function TaskDetailsModal({
             minHeight: '100px',
             whiteSpace: 'pre-wrap'
           }}>
-            {task.description || '—'}
+            {taskState.description || '—'}
           </div>
         </div>
 
@@ -156,6 +177,18 @@ export default function TaskDetailsModal({
               />
             )}
           </>
+        )}
+
+        {showEdit && (
+          <EditTaskModal
+            task={taskState}
+            onClose={() => setShowEdit(false)}
+            onDone={() => {
+              setShowEdit(false);
+              onClose(); // Optional: close details modal
+            }}
+            onUpdate={(updated) => setTaskState(updated)}
+          />
         )}
       </div>
     </div>

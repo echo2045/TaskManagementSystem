@@ -1,3 +1,4 @@
+// src/controllers/taskController.js
 const pool = require('../db');
 
 // GET /api/tasks
@@ -151,13 +152,45 @@ const createTask = async (req, res) => {
 // PATCH /api/tasks/:id
 const updateTask = async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body;
+  const {
+    title, description, deadline, importance, urgency,
+    status, project_id = null, area_id = null, start_date
+  } = req.body;
 
   try {
+    const existingTask = await pool.query(
+      'SELECT deadline FROM tasks WHERE task_id = $1',
+      [id]
+    );
+
+    if (existingTask.rowCount === 0) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    const finalDeadline = deadline || existingTask.rows[0].deadline;
+    if (start_date && new Date(start_date) > new Date(finalDeadline)) {
+      return res.status(400).json({ error: 'Start date cannot be after the deadline.' });
+    }
+
+    const normalizedStart = start_date ? new Date(start_date).toISOString().split('T')[0] : null;
+
     const result = await pool.query(`
-      UPDATE tasks SET status = $1 WHERE task_id = $2
+      UPDATE tasks SET
+        title = COALESCE($1, title),
+        description = COALESCE($2, description),
+        deadline = COALESCE($3, deadline),
+        importance = COALESCE($4, importance),
+        urgency = COALESCE($5, urgency),
+        status = COALESCE($6, status),
+        project_id = $7,
+        area_id = $8,
+        start_date = COALESCE($9, start_date)
+      WHERE task_id = $10
       RETURNING *
-    `, [status, id]);
+    `, [
+      title, description, deadline, importance, urgency,
+      status, project_id, area_id, normalizedStart, id
+    ]);
 
     res.json(result.rows[0]);
   } catch (err) {
@@ -188,7 +221,7 @@ const getTaskAssignees = async (req, res) => {
       SELECT
         u.user_id, u.full_name, u.email,
         ta.importance AS assignee_importance,
-        ta.urgency AS assignee_urgency,
+        ta.urgency,
         ta.is_completed,
         ta.start_date,
         d.full_name AS delegated_by
@@ -203,7 +236,7 @@ const getTaskAssignees = async (req, res) => {
       full_name: row.full_name,
       email: row.email,
       importance: row.assignee_importance,
-      urgency: row.assignee_urgency,
+      urgency: row.urgency,
       is_completed: row.is_completed,
       delegated_by: row.delegated_by,
       start_date: row.start_date

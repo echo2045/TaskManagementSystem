@@ -24,9 +24,14 @@ export function getArchivedTasksForUser(user_id) {
   return axios.get(`${BASE_URL}/archive/${user_id}`).then(res => res.data);
 }
 
-// ✅ Update task
+// ✅ Update task (general patch)
 export function updateTask(task_id, updates) {
   return axios.patch(`${BASE_URL}/${task_id}`, updates);
+}
+
+// ✅ Update entire task details (used in EditTaskModal)
+export function updateTaskDetails(task) {
+  return axios.put(`${BASE_URL}/${task.task_id}`, task).then(res => res.data);
 }
 
 // ✅ Delete task
