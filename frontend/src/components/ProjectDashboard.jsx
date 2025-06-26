@@ -1,14 +1,13 @@
 // src/components/ProjectDashboard.jsx
 import React, { useState, useEffect, useCallback, useContext } from 'react';
 import TaskCard from './TaskCard';
-import CreateTaskModal from './CreateTaskModal';
 import { getTasksForUser } from '../api/tasks';
 import { getSupervisees } from '../api/users';
 import { getAllProjects } from '../api/projects';
 import { AuthContext } from '../AuthContext';
 import { getTaskColor } from '../utils/getTaskColor';
 
-export default function ProjectDashboard({ filterUser }) {
+export default function ProjectDashboard({ filterUser, viewingOwnOnly }) {
   const { user } = useContext(AuthContext);
 
   const [tasks, setTasks] = useState([]);
@@ -73,7 +72,6 @@ export default function ProjectDashboard({ filterUser }) {
     .filter(t => {
       const assignedIds = Array.isArray(t.assignees) ? t.assignees.map(a => a.user_id) : [];
       const isManager = ['manager', 'hr'].includes(user.role);
-
       return t.project_id &&
         t.status === 'pending' &&
         new Date(t.deadline) >= now &&
@@ -105,22 +103,22 @@ export default function ProjectDashboard({ filterUser }) {
 
   return (
     <div style={{
-      height: '100vh',
+      flex: 1,
       display: 'flex',
       flexDirection: 'column',
-      overflow: 'hidden',
-      padding: '1rem'
+      overflow: 'hidden'
     }}>
-      <h3 style={{ marginBottom: '1rem' }}>Project Tasks</h3>
-
       {/* Filters */}
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', alignItems: 'flex-end' }}>
-        <input
-          placeholder="Search by task title"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{ flex: 2, padding: '0.5rem' }}
-        />
+        <div style={{ flex: 2, display: 'flex', flexDirection: 'column' }}>
+          <label style={{ fontSize: '1.5rem', fontWeight: 'bold', marginTop: '0.5rem' }}>Search Project Tasks</label>
+          <input
+            placeholder="Search by task title"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ padding: '0.5rem' }}
+          />
+        </div>
 
         <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ height: '2.5rem' }}>
           <option value="">All Types</option>

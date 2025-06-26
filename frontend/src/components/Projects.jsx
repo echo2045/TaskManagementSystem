@@ -65,7 +65,12 @@ export default function Projects() {
   };
 
   if (user.role !== 'manager') {
-    return <ProjectDashboard viewingOwnOnly />;
+    return (
+      <div style={{ padding: '1rem' }}>
+        <h1 style={{ fontSize: '2rem', margin: '0 0 0.5rem 0' }}>Projects</h1>
+        <ProjectDashboard viewingOwnOnly />
+      </div>
+    );
   }
 
   const filtered = projects
@@ -74,9 +79,14 @@ export default function Projects() {
 
   return (
     <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      {/* Section: Page Title */}
+      <div>
+        <h1 style={{ fontSize: '2rem', margin: '0 0 0.5rem 0' }}>Projects</h1>
+      </div>
+
       {/* Section 1: Create */}
       <section>
-        <h2>Add Project</h2>
+        <h2 style={{ marginTop: '0' }}>Add Project</h2>
         <form onSubmit={handleCreate} style={{ display: 'flex', gap: '1rem' }}>
           <input
             value={newName}
