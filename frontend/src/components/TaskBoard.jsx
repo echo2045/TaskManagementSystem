@@ -7,7 +7,7 @@ import { getTasksForUser } from '../api/tasks';
 import { getSupervisees } from '../api/users';
 import { AuthContext } from '../AuthContext';
 import { getTaskColor } from '../utils/getTaskColor';
-import { FaQuestionCircle, FaPlusCircle } from 'react-icons/fa';
+import { FaQuestionCircle } from 'react-icons/fa';
 
 export default function TaskBoard({ filterUser }) {
   const { user } = useContext(AuthContext);
@@ -99,24 +99,36 @@ export default function TaskBoard({ filterUser }) {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {canCreate && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <h3 style={{ marginRight: '0.5rem' }}>Task Entry</h3>
-              <FaQuestionCircle
-                size={18}
-                color="#888"
-                style={{ cursor: 'pointer' }}
-                onClick={() => setShowHelp(true)}
-                title="Eisenhower Matrix Help"
-              />
-            </div>
-            <FaPlusCircle
-              size={22}
-              color="#007bff"
-              title="Create New Task"
-              onClick={() => setModalOpen(true)}
+          {/* Page Title */}
+          <h2 style={{ padding: '1rem 1rem 0rem', margin: '0', fontSize: '2rem' }}>Tasks</h2>
+
+          {/* Task Entry */}
+          <div style={{ display: 'flex', alignItems: 'center', padding: '0 1rem', marginTop: '0.25rem' }}>
+            <h3 style={{ marginRight: '0.5rem', fontSize: '1.5rem', fontWeight: 'bold' }}>Task Entry</h3>
+            <FaQuestionCircle
+              size={18}
+              color="#888"
               style={{ cursor: 'pointer' }}
+              onClick={() => setShowHelp(true)}
+              title="Eisenhower Matrix Help"
             />
+          </div>
+
+          {/* Create Button */}
+          <div style={{ padding: '0 1rem 1rem' }}>
+            <button
+              onClick={() => setModalOpen(true)}
+              style={{
+                padding: '0.5rem 1rem',
+                background: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Create Task
+            </button>
           </div>
 
           <CreateTaskModal
@@ -128,10 +140,10 @@ export default function TaskBoard({ filterUser }) {
         </>
       )}
 
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: '1.5rem', padding: '0 1rem', marginBottom: '1rem' }}>
+      {/* Filters Section */}
+      <div style={{ display: 'flex', gap: '1.5rem', padding: '0 1rem', marginBottom: '1rem', alignItems: 'flex-end' }}>
         <div style={{ flex: 2, display: 'flex', flexDirection: 'column' }}>
-          <label style={{ fontSize: '0.9rem' }}>Search</label>
+          <label style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Search Tasks</label>
           <input
             type="text"
             placeholder="Search tasks…"
