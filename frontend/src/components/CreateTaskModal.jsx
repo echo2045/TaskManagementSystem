@@ -7,10 +7,10 @@ import { getAllProjects } from '../api/projects';
 import { getAllAreas } from '../api/areas';
 import EisenhowerHelpModal from './EisenhowerHelpModal';
 
-export default function CreateTaskModal({ visible, onClose, ownerId, initialTitle = '' }) {
+export default function CreateTaskModal({ visible, onClose, ownerId }) {
   const { user } = useContext(AuthContext);
   const [form, setForm] = useState({
-    title: initialTitle,
+    title: '',
     description: '',
     deadline: '',
     start_date: '',
@@ -29,7 +29,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
     if (visible) {
       const today = new Date().toLocaleDateString('en-CA');
       setForm({
-        title: initialTitle,
+        title: '',
         description: '',
         deadline: '',
         start_date: today,
@@ -51,7 +51,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
         getAllAreas(true).then(setAreas);
       }
     }
-  }, [visible, initialTitle, user]);
+  }, [visible, user]);
 
   if (!visible) return null;
 
@@ -135,6 +135,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
   };
 
   const isSubmitDisabled =
+    !form.title.trim() ||
     !form.deadline ||
     (taskType === 'project' && !form.project_id) ||
     (taskType === 'area' && !form.area_id);
@@ -151,8 +152,9 @@ export default function CreateTaskModal({ visible, onClose, ownerId, initialTitl
             <input
               type="text"
               value={form.title}
-              readOnly
-              style={{ width: '100%', padding: '0.5rem', background: '#eee', cursor: 'not-allowed' }}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              required
+              style={{ width: '100%', padding: '0.5rem' }}
             />
           </div>
 
