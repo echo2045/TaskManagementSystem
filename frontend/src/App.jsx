@@ -45,7 +45,7 @@ export default function App() {
     { key: 'areas', label: 'Areas' },
     ...(user.role === 'manager' || user.role === 'hr'
       ? [
-          { key: 'allocate', label: 'Allocate Supervisor' },
+          { key: 'allocate', label: 'Allocate Team' }, // changed from "Allocate Supervisor"
           { key: 'addUser', label: 'Add User' },
           { key: 'deleteUser', label: 'Delete User' }
         ]
@@ -231,4 +231,3 @@ export default function App() {
     </div>
   );
 }
-  
