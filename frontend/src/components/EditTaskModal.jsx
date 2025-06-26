@@ -1,6 +1,6 @@
 // src/components/EditTaskModal.jsx
 import React, { useEffect, useState } from 'react';
-import { updateTask } from '../api/tasks';
+import { updateTask, getAssignees } from '../api/tasks';
 import { getAllProjects } from '../api/projects';
 import { getAllAreas } from '../api/areas';
 
@@ -15,30 +15,36 @@ export default function EditTaskModal({ task, onClose, onDone }) {
   const [areaId, setAreaId] = useState(task.area_id || '');
   const [projects, setProjects] = useState([]);
   const [areas, setAreas] = useState([]);
-  const [isProjectTask, setIsProjectTask] = useState(!!task.project_id);
-  const [isAreaTask, setIsAreaTask] = useState(!!task.area_id);
+  const [assignees, setAssignees] = useState([]);
 
   useEffect(() => {
     getAllProjects(true).then(setProjects).catch(console.error);
     getAllAreas(true).then(setAreas).catch(console.error);
-  }, []);
+    getAssignees(task.task_id).then(setAssignees).catch(console.error);
+  }, [task.task_id]);
 
   const handleSubmit = async () => {
     if (!title.trim()) return alert('Title is required');
-    if (new Date(startDate) > new Date(deadline)) {
-      return alert('Start date must be before deadline');
+
+    const start = new Date(startDate);
+    const end = new Date(deadline);
+    if (start > end) return alert('Start date must be before or same as deadline');
+
+    const invalidAssignees = assignees.filter(a => new Date(a.start_date) > end);
+    if (invalidAssignees.length > 0) {
+      return alert('Deadline cannot be earlier than an assignee’s start date.');
     }
 
     try {
       await updateTask(task.task_id, {
         title,
         description,
-        start_date: toUtcIsoDate(startDate),
+        start_date: startDate + 'T00:00:00',
         deadline: deadline + 'T00:00:00',
         importance,
         urgency,
-        project_id: isProjectTask ? projectId : null,
-        area_id: isAreaTask ? areaId : null
+        project_id: projectId || null,
+        area_id: projectId ? null : areaId || null
       });
       onDone();
     } catch (err) {
@@ -71,39 +77,57 @@ export default function EditTaskModal({ task, onClose, onDone }) {
 
         <div style={row}>
           <div style={{ flex: 1, marginRight: '1rem' }}>
-            <label style={label}>Importance</label>
-            <input type="range" min={1} max={10} value={importance} onChange={e => setImportance(+e.target.value)} style={{ width: '100%' }} />
+            <label style={label}>Importance: {importance}</label>
+            <input
+              type="range"
+              min={1}
+              max={10}
+              value={importance}
+              onChange={e => setImportance(+e.target.value)}
+              style={{ width: '100%' }}
+            />
           </div>
           <div style={{ flex: 1 }}>
-            <label style={label}>Urgency</label>
-            <input type="range" min={1} max={10} value={urgency} onChange={e => setUrgency(+e.target.value)} style={{ width: '100%' }} />
+            <label style={label}>Urgency: {urgency}</label>
+            <input
+              type="range"
+              min={1}
+              max={10}
+              value={urgency}
+              onChange={e => setUrgency(+e.target.value)}
+              style={{ width: '100%' }}
+            />
           </div>
         </div>
 
+        <label style={label}>Is this task linked to a project or area?</label>
         <div style={row}>
-          <label style={{ ...label, marginRight: '1rem' }}>
-            <input type="checkbox" checked={isProjectTask} onChange={() => {
-              setIsProjectTask(true);
-              setIsAreaTask(false);
-              setAreaId('');
-            }} />
-            Project Task
+          <label style={{ marginRight: '1rem' }}>
+            <input
+              type="checkbox"
+              checked={!!projectId}
+              onChange={() => {
+                setProjectId(projectId ? '' : projects[0]?.project_id || '');
+                setAreaId('');
+              }}
+            /> Project
           </label>
-          <label style={label}>
-            <input type="checkbox" checked={isAreaTask} onChange={() => {
-              setIsAreaTask(true);
-              setIsProjectTask(false);
-              setProjectId('');
-            }} />
-            Area Task
+          <label>
+            <input
+              type="checkbox"
+              checked={!!areaId}
+              onChange={() => {
+                setAreaId(areaId ? '' : areas[0]?.area_id || '');
+                setProjectId('');
+              }}
+            /> Area
           </label>
         </div>
 
-        {isProjectTask && (
+        {projectId && (
           <>
-            <label style={label}>Project</label>
+            <label style={label}>Select Project</label>
             <select value={projectId} onChange={e => setProjectId(e.target.value)} style={input}>
-              <option value="">— Select Project —</option>
               {projects.map(p => (
                 <option key={p.project_id} value={p.project_id}>{p.name}</option>
               ))}
@@ -111,11 +135,10 @@ export default function EditTaskModal({ task, onClose, onDone }) {
           </>
         )}
 
-        {isAreaTask && (
+        {areaId && (
           <>
-            <label style={label}>Area</label>
+            <label style={label}>Select Area</label>
             <select value={areaId} onChange={e => setAreaId(e.target.value)} style={input}>
-              <option value="">— Select Area —</option>
               {areas.map(a => (
                 <option key={a.area_id} value={a.area_id}>{a.name}</option>
               ))}
@@ -134,16 +157,6 @@ export default function EditTaskModal({ task, onClose, onDone }) {
 
 function formatDate(date) {
   return new Date(date).toLocaleDateString('en-CA');
-}
-
-function toUtcIsoDate(dateString) {
-  const localDate = new Date(dateString + 'T00:00:00');
-  return new Date(Date.UTC(
-    localDate.getFullYear(),
-    localDate.getMonth(),
-    localDate.getDate(),
-    0, 0, 0
-  )).toISOString();
 }
 
 const overlay = {
