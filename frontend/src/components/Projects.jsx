@@ -8,6 +8,7 @@ import {
   deleteProject
 } from '../api/projects';
 import ProjectDashboard from './ProjectDashboard';
+import EditProjectModal from './EditProjectModal';
 
 export default function Projects() {
   const { user } = useContext(AuthContext);
@@ -16,6 +17,7 @@ export default function Projects() {
   const [message, setMessage] = useState('');
   const [search, setSearch] = useState('');
   const [showActive, setShowActive] = useState(true);
+  const [editingProjectId, setEditingProjectId] = useState(null);
 
   const fetch = async () => {
     try {
@@ -62,6 +64,11 @@ export default function Projects() {
     } catch (err) {
       console.error('Error deleting project', err);
     }
+  };
+
+  const handleEditClose = () => {
+    setEditingProjectId(null);
+    fetch();
   };
 
   if (user.role !== 'manager') {
@@ -164,12 +171,10 @@ export default function Projects() {
                 </span>
               )}
             </div>
-            <button
-              onClick={() => handleDelete(p.project_id)}
-              style={{ fontSize: '1.2rem' }}
-            >
-              🗑
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button onClick={() => setEditingProjectId(p.project_id)} title="Edit">✏️</button>
+              <button onClick={() => handleDelete(p.project_id)} title="Delete" style={{ fontSize: '1.2rem' }}>🗑</button>
+            </div>
           </div>
         ))}
       </section>
@@ -178,6 +183,11 @@ export default function Projects() {
       <section>
         <ProjectDashboard viewingOwnOnly />
       </section>
+
+      {/* Modal */}
+      {editingProjectId && (
+        <EditProjectModal projectId={editingProjectId} onClose={handleEditClose} />
+      )}
     </div>
   );
 }

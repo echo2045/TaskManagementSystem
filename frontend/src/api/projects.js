@@ -1,3 +1,4 @@
+// frontend/src/api/projects.js
 import axios from 'axios';
 
 const BASE_URL = 'http://localhost:5000/api/projects';
@@ -16,12 +17,17 @@ export function getAllProjects(active = null) {
   return axios.get(url).then(res => res.data);
 }
 
-// Mark a project as complete/incomplete
-export function markProjectComplete(project_id, isCompleted) {
-  return axios.patch(`${BASE_URL}/${project_id}/complete`, { is_completed: isCompleted });
+// Mark a project as complete
+export function markProjectComplete(project_id) {
+  return axios.patch(`${BASE_URL}/${project_id}/complete`);
 }
 
 // Delete a project (cascades its tasks)
 export function deleteProject(project_id) {
   return axios.delete(`${BASE_URL}/${project_id}`);
+}
+
+// Update project name
+export function updateProject(project_id, newName) {
+  return axios.patch(`${BASE_URL}/${project_id}`, { name: newName });
 }

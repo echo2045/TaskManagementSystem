@@ -1,4 +1,3 @@
-// src/controllers/taskController.js
 const pool = require('../db');
 
 // GET /api/tasks
@@ -61,9 +60,9 @@ const getAllTasks = async (req, res) => {
   }
 };
 
-// GET /api/tasks/archive/:id
+// GET /api/tasks/archive/:user_id
 const getArchivedTasksForUser = async (req, res) => {
-  const { id } = req.params;
+  const { user_id } = req.params;
 
   try {
     const taskResult = await pool.query(`
@@ -109,8 +108,8 @@ const getArchivedTasksForUser = async (req, res) => {
     });
 
     const filtered = allArchivedTasks.filter(task => {
-      const isOwner = task.owner_id === Number(id);
-      const isAssigned = (assigneesByTask[task.task_id] || []).some(a => a.user_id === Number(id));
+      const isOwner = task.owner_id === Number(user_id);
+      const isAssigned = (assigneesByTask[task.task_id] || []).some(a => a.user_id === Number(user_id));
       return isOwner || isAssigned;
     });
 
@@ -199,15 +198,29 @@ const updateTask = async (req, res) => {
   }
 };
 
-// DELETE /api/tasks/:id
-const deleteTask = async (req, res) => {
-  const { id } = req.params;
+// PUT /api/tasks/:task_id
+const updateTaskDetails = async (req, res) => {
+  const { task_id } = req.params;
+  const updates = req.body;
 
   try {
-    await pool.query('DELETE FROM tasks WHERE task_id = $1', [id]);
-    res.sendStatus(204);
+    const fields = [];
+    const values = [];
+
+    Object.entries(updates).forEach(([key, val], idx) => {
+      fields.push(`${key} = $${idx + 1}`);
+      values.push(val);
+    });
+
+    const query = `
+      UPDATE tasks SET ${fields.join(', ')} WHERE task_id = $${values.length + 1}
+      RETURNING *
+    `;
+
+    const result = await pool.query(query, [...values, task_id]);
+    res.json(result.rows[0]);
   } catch (err) {
-    console.error('Error deleting task:', err.message);
+    console.error('Error updating task details:', err.message);
     res.status(500).json({ error: err.message });
   }
 };
@@ -272,17 +285,51 @@ const assignTask = async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, $6)
     `, [id, user_id, assigned_by, importance, urgency, normalizedStart]);
 
-    const { rows: updated } = await pool.query(`
-      SELECT u.user_id, u.full_name, u.email
-      FROM task_assignments ta
-      JOIN users u ON ta.assignee_id = u.user_id
-      WHERE ta.task_id = $1
-    `, [id]);
-
-    res.json(updated);
+    res.status(201).json({ message: 'Task assigned successfully.' });
   } catch (err) {
     console.error('Error assigning task:', err.message);
     res.status(500).json({ error: err.message });
+  }
+};
+
+// DELETE /api/tasks/:id/assignees/:userId
+const unassignTask = async (req, res) => {
+  const { id, userId } = req.params;
+  const requestorId = req.user?.user_id || 1;
+
+  try {
+    const result = await pool.query(`
+      DELETE FROM task_assignments
+      WHERE task_id = $1 AND assignee_id = $2 AND assigned_by = $3
+    `, [id, userId, requestorId]);
+
+    if (result.rowCount === 0) {
+      return res.status(403).json({ error: 'You can only unassign users you personally assigned.' });
+    }
+
+    res.sendStatus(204);
+  } catch (err) {
+    console.error('Error unassigning task:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// PATCH /api/tasks/:taskId/assignment/:userId/complete
+const markAssignmentCompleted = async (req, res) => {
+  const { taskId, userId } = req.params;
+  const { is_completed } = req.body;
+
+  try {
+    await pool.query(`
+      UPDATE task_assignments
+      SET is_completed = $1
+      WHERE task_id = $2 AND assignee_id = $3
+    `, [is_completed, taskId, userId]);
+
+    res.sendStatus(200);
+  } catch (err) {
+    console.error("Error updating assignment completion", err);
+    res.status(500).json({ error: "Failed to update completion status" });
   }
 };
 
@@ -329,44 +376,16 @@ const updateAssignmentStartDate = async (req, res) => {
   }
 };
 
-// DELETE /api/tasks/:id/assignees/:userId
-const unassignTask = async (req, res) => {
-  const { id, userId } = req.params;
-  const requestorId = req.user?.user_id || 1;
+// DELETE /api/tasks/:id
+const deleteTask = async (req, res) => {
+  const { id } = req.params;
 
   try {
-    const result = await pool.query(`
-      DELETE FROM task_assignments
-      WHERE task_id = $1 AND assignee_id = $2 AND assigned_by = $3
-    `, [id, userId, requestorId]);
-
-    if (result.rowCount === 0) {
-      return res.status(403).json({ error: 'You can only unassign users you personally assigned.' });
-    }
-
+    await pool.query('DELETE FROM tasks WHERE task_id = $1', [id]);
     res.sendStatus(204);
   } catch (err) {
-    console.error('Error unassigning task:', err.message);
+    console.error('Error deleting task:', err.message);
     res.status(500).json({ error: err.message });
-  }
-};
-
-// PATCH /api/tasks/:taskId/assignment/:userId/complete
-const markAssignmentCompleted = async (req, res) => {
-  const { taskId, userId } = req.params;
-  const { is_completed } = req.body;
-
-  try {
-    await pool.query(`
-      UPDATE task_assignments
-      SET is_completed = $1
-      WHERE task_id = $2 AND assignee_id = $3
-    `, [is_completed, taskId, userId]);
-
-    res.sendStatus(200);
-  } catch (err) {
-    console.error("Error updating assignment completion", err);
-    res.status(500).json({ error: "Failed to update completion status" });
   }
 };
 
@@ -375,6 +394,7 @@ module.exports = {
   getArchivedTasksForUser,
   createTask,
   updateTask,
+  updateTaskDetails,
   deleteTask,
   getTaskAssignees,
   assignTask,

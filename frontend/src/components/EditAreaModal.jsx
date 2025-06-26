@@ -1,0 +1,91 @@
+// src/components/EditAreaModal.jsx
+import React, { useState, useEffect } from 'react';
+import { updateArea } from '../api/areas';
+
+export default function EditAreaModal({ area, onClose, onSave }) {
+  const [name, setName] = useState('');
+
+  useEffect(() => {
+    if (area?.name) setName(area.name);
+  }, [area]);
+
+  const handleSubmit = async () => {
+    if (!name.trim()) return alert('Area name required');
+    try {
+      await updateArea(area.area_id, name); // Pass plain string as body
+      onSave(); // Refresh list
+      onClose();
+    } catch (err) {
+      console.error('Update failed:', err);
+      alert('Failed to update area name');
+    }
+  };
+
+  return (
+    <div style={overlay}>
+      <div style={modal}>
+        <h2>Edit Area</h2>
+        <input
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder="Enter new area name"
+          style={input}
+        />
+        <div style={buttonRow}>
+          <button onClick={onClose} style={cancel}>Cancel</button>
+          <button onClick={handleSubmit} style={save}>Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const overlay = {
+  position: 'fixed',
+  top: 0, left: 0, right: 0, bottom: 0,
+  background: 'rgba(0,0,0,0.5)',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  zIndex: 1000
+};
+
+const modal = {
+  background: '#fff',
+  padding: '2rem',
+  borderRadius: '8px',
+  width: '400px',
+  display: 'flex',
+  flexDirection: 'column'
+};
+
+const input = {
+  padding: '0.5rem',
+  fontSize: '1rem',
+  borderRadius: '4px',
+  border: '1px solid #ccc',
+  marginBottom: '1rem'
+};
+
+const buttonRow = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+  gap: '1rem'
+};
+
+const cancel = {
+  background: '#ccc',
+  border: 'none',
+  borderRadius: '4px',
+  padding: '0.5rem 1rem',
+  cursor: 'pointer'
+};
+
+const save = {
+  background: '#4caf50',
+  color: '#fff',
+  border: 'none',
+  borderRadius: '4px',
+  padding: '0.5rem 1rem',
+  cursor: 'pointer'
+};

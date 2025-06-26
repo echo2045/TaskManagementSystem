@@ -1,17 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const authenticate = require('../middleware/auth');
 const {
   createArea,
   getAllAreas,
   markAreaComplete,
-  deleteArea
+  deleteArea,
+  updateArea
 } = require('../controllers/areaController');
+const authenticate = require('../middleware/auth');
 
-// All routes require authentication
-router.post('/', authenticate, createArea);
-router.get('/', authenticate, getAllAreas);
-router.patch('/:id/complete', authenticate, markAreaComplete);
-router.delete('/:id', authenticate, deleteArea);
+router.use(authenticate);
+
+// Area routes
+router.post('/', createArea);
+router.get('/', getAllAreas);
+router.patch('/:area_id/complete', markAreaComplete);
+router.delete('/:area_id', deleteArea);
+router.patch('/:area_id', updateArea); // rename area
 
 module.exports = router;

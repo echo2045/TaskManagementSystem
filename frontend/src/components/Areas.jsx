@@ -8,6 +8,7 @@ import {
   deleteArea
 } from '../api/areas';
 import AreaDashboard from './AreaDashboard';
+import EditAreaModal from './EditAreaModal';
 
 export default function Areas() {
   const { user } = useContext(AuthContext);
@@ -16,6 +17,7 @@ export default function Areas() {
   const [message, setMessage] = useState('');
   const [search, setSearch] = useState('');
   const [showActive, setShowActive] = useState(true);
+  const [editingArea, setEditingArea] = useState(null);
 
   const fetch = async () => {
     try {
@@ -160,9 +162,14 @@ export default function Areas() {
                 ({a.created_by_name || ''})
               </span>
             </div>
-            <button onClick={() => handleDelete(a.area_id)} style={{ fontSize: '1.2rem' }}>
-              🗑
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button onClick={() => setEditingArea(a)} style={{ fontSize: '1.1rem' }}>
+                ✏️
+              </button>
+              <button onClick={() => handleDelete(a.area_id)} style={{ fontSize: '1.2rem' }}>
+                🗑
+              </button>
+            </div>
           </div>
         ))}
       </section>
@@ -171,6 +178,14 @@ export default function Areas() {
       <section>
         <AreaDashboard />
       </section>
+
+      {editingArea && (
+        <EditAreaModal
+          area={editingArea}
+          onClose={() => setEditingArea(null)}
+          onSave={fetch}
+        />
+      )}
     </div>
   );
 }
