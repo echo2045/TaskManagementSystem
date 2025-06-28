@@ -150,7 +150,7 @@ const createTask = async (req, res) => {
 
 // PATCH /api/tasks/:id
 const updateTask = async (req, res) => {
-  const { id } = req.params;
+  const { task_id } = req.params;
   const {
     title, description, deadline, importance, urgency,
     status, project_id = null, area_id = null, start_date
@@ -159,7 +159,7 @@ const updateTask = async (req, res) => {
   try {
     const existingTask = await pool.query(
       'SELECT deadline FROM tasks WHERE task_id = $1',
-      [id]
+      [task_id]
     );
 
     if (existingTask.rowCount === 0) {
@@ -188,7 +188,7 @@ const updateTask = async (req, res) => {
       RETURNING *
     `, [
       title, description, deadline, importance, urgency,
-      status, project_id, area_id, normalizedStart, id
+      status, project_id, area_id, normalizedStart, task_id
     ]);
 
     res.json(result.rows[0]);
@@ -227,7 +227,7 @@ const updateTaskDetails = async (req, res) => {
 
 // GET /api/tasks/:id/assignees
 const getTaskAssignees = async (req, res) => {
-  const { id } = req.params;
+  const { task_id } = req.params;
 
   try {
     const result = await pool.query(`
@@ -242,7 +242,7 @@ const getTaskAssignees = async (req, res) => {
       JOIN users u ON ta.assignee_id = u.user_id
       LEFT JOIN users d ON ta.assigned_by = d.user_id
       WHERE ta.task_id = $1
-    `, [id]);
+    `, [task_id]);
 
     const formatted = result.rows.map(row => ({
       user_id: row.user_id,
@@ -264,7 +264,7 @@ const getTaskAssignees = async (req, res) => {
 
 // POST /api/tasks/:id/assignees
 const assignTask = async (req, res) => {
-  const { id } = req.params;
+  const { task_id } = req.params;
   const { user_id, importance, urgency, start_date } = req.body;
   const assigned_by = req.user?.user_id || 1;
 
@@ -272,7 +272,7 @@ const assignTask = async (req, res) => {
     const alreadyAssigned = await pool.query(`
       SELECT 1 FROM task_assignments
       WHERE task_id = $1 AND assignee_id = $2
-    `, [id, user_id]);
+    `, [task_id, user_id]);
 
     if (alreadyAssigned.rows.length > 0) {
       return res.status(400).json({ error: 'User is already assigned to this task.' });
@@ -283,7 +283,7 @@ const assignTask = async (req, res) => {
     await pool.query(`
       INSERT INTO task_assignments (task_id, assignee_id, assigned_by, importance, urgency, start_date)
       VALUES ($1, $2, $3, $4, $5, $6)
-    `, [id, user_id, assigned_by, importance, urgency, normalizedStart]);
+    `, [task_id, user_id, assigned_by, importance, urgency, normalizedStart]);
 
     res.status(201).json({ message: 'Task assigned successfully.' });
   } catch (err) {
@@ -294,14 +294,14 @@ const assignTask = async (req, res) => {
 
 // DELETE /api/tasks/:id/assignees/:userId
 const unassignTask = async (req, res) => {
-  const { id, userId } = req.params;
+  const { task_id, userId } = req.params;
   const requestorId = req.user?.user_id || 1;
 
   try {
     const result = await pool.query(`
       DELETE FROM task_assignments
       WHERE task_id = $1 AND assignee_id = $2 AND assigned_by = $3
-    `, [id, userId, requestorId]);
+    `, [task_id, userId, requestorId]);
 
     if (result.rowCount === 0) {
       return res.status(403).json({ error: 'You can only unassign users you personally assigned.' });
@@ -316,7 +316,7 @@ const unassignTask = async (req, res) => {
 
 // PATCH /api/tasks/:taskId/assignment/:userId/complete
 const markAssignmentCompleted = async (req, res) => {
-  const { taskId, userId } = req.params;
+  const { task_id, userId } = req.params;
   const { is_completed } = req.body;
 
   try {
@@ -324,7 +324,7 @@ const markAssignmentCompleted = async (req, res) => {
       UPDATE task_assignments
       SET is_completed = $1
       WHERE task_id = $2 AND assignee_id = $3
-    `, [is_completed, taskId, userId]);
+    `, [is_completed, task_id, userId]);
 
     res.sendStatus(200);
   } catch (err) {
@@ -335,7 +335,7 @@ const markAssignmentCompleted = async (req, res) => {
 
 // PATCH /api/tasks/:taskId/assignment/:userId/start-date
 const updateAssignmentStartDate = async (req, res) => {
-  const { taskId, userId } = req.params;
+  const { task_id, userId } = req.params;
   const { start_date } = req.body;
   const requestorId = req.user?.user_id || 1;
 
@@ -345,7 +345,7 @@ const updateAssignmentStartDate = async (req, res) => {
       FROM task_assignments ta
       JOIN tasks t ON t.task_id = ta.task_id
       WHERE ta.task_id = $1 AND ta.assignee_id = $2
-    `, [taskId, userId]);
+    `, [task_id, userId]);
 
     if (check.rows.length === 0) {
       return res.status(404).json({ error: 'Assignment not found' });
@@ -367,7 +367,7 @@ const updateAssignmentStartDate = async (req, res) => {
       UPDATE task_assignments
       SET start_date = $1
       WHERE task_id = $2 AND assignee_id = $3
-    `, [normalizedStart, taskId, userId]);
+    `, [normalizedStart, task_id, userId]);
 
     res.status(200).json({ message: 'Start date updated successfully.' });
   } catch (err) {
@@ -378,10 +378,10 @@ const updateAssignmentStartDate = async (req, res) => {
 
 // DELETE /api/tasks/:id
 const deleteTask = async (req, res) => {
-  const { id } = req.params;
+  const { task_id } = req.params;
 
   try {
-    await pool.query('DELETE FROM tasks WHERE task_id = $1', [id]);
+    await pool.query('DELETE FROM tasks WHERE task_id = $1', [task_id]);
     res.sendStatus(204);
   } catch (err) {
     console.error('Error deleting task:', err.message);
