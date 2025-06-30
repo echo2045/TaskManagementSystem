@@ -4,7 +4,8 @@ import { AuthContext } from '../AuthContext';
 import { getTasksForUser } from '../api/tasks';
 import { getAllAreas } from '../api/areas';
 import TaskCard from './TaskCard';
-import { getTaskColor } from '../utils/getTaskColor';
+import { getTaskColor, borderColors, interiorColors } from '../utils/getTaskColor';
+import EisenhowerHelpModal from './EisenhowerHelpModal';
 
 export default function AreaDashboard() {
   const { user } = useContext(AuthContext);
@@ -15,6 +16,7 @@ export default function AreaDashboard() {
   const [areaFilter, setAreaFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   const [groupByStartDate, setGroupByStartDate] = useState(false);
+  const [isHelpModalVisible, setHelpModalVisible] = useState(false);
 
   const fetchTasks = async () => {
     try {
@@ -80,6 +82,25 @@ export default function AreaDashboard() {
       overflow: 'hidden',
       padding: 0
     }}>
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', padding: '0.5rem' }}>
+        {Object.entries(borderColors).map(([type, color]) => (
+          <div
+            key={type}
+            onClick={() => setHelpModalVisible(true)}
+            style={{
+              backgroundColor: interiorColors[type],
+              border: `2px solid ${color}`,
+              borderRadius: '16px',
+              padding: '0.5rem 1rem',
+              cursor: 'pointer',
+              textTransform: 'capitalize',
+              fontWeight: 'bold'
+            }}
+          >
+            {type}
+          </div>
+        ))}
+      </div>
       {/* Filters */}
       <div style={{
         display: 'flex',
@@ -155,6 +176,10 @@ export default function AreaDashboard() {
         ))}
         {visible.length === 0 && <p>No area tasks to display.</p>}
       </div>
+      <EisenhowerHelpModal
+        visible={isHelpModalVisible}
+        onClose={() => setHelpModalVisible(false)}
+      />
     </div>
   );
 }

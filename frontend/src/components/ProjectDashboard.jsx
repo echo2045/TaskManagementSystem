@@ -5,7 +5,8 @@ import { getTasksForUser } from '../api/tasks';
 import { getSupervisees } from '../api/users';
 import { getAllProjects } from '../api/projects';
 import { AuthContext } from '../AuthContext';
-import { getTaskColor } from '../utils/getTaskColor';
+import { getTaskColor, borderColors, interiorColors } from '../utils/getTaskColor';
+import EisenhowerHelpModal from './EisenhowerHelpModal';
 
 export default function ProjectDashboard({ filterUser }) {
   const { user } = useContext(AuthContext);
@@ -19,6 +20,7 @@ export default function ProjectDashboard({ filterUser }) {
   const [projectFilter, setProjectFilter] = useState('');
   const [groupByStartDate, setGroupByStartDate] = useState(false);
   const [superviseeIds, setSuperviseeIds] = useState([]);
+  const [isHelpModalVisible, setHelpModalVisible] = useState(false);
 
   const viewingUserId = filterUser?.user_id || user.user_id;
 
@@ -59,7 +61,7 @@ export default function ProjectDashboard({ filterUser }) {
     };
     align();
     return () => { clearTimeout(tId); clearInterval(iId); };
-  }, [fetchTasks]);
+  }, [fetchTasks, filterUser]);
 
   const viewingOther = viewingUserId !== user.user_id;
   const allowed = !viewingOther
@@ -105,6 +107,27 @@ export default function ProjectDashboard({ filterUser }) {
       flexDirection: 'column',
       overflow: 'hidden'
     }}>
+      {/* Eisenhower Matrix Capsules */}
+      <div style={{ display: 'flex', gap: '0.5rem', padding: '0 1rem 1rem' }}>
+        {Object.entries(borderColors).map(([type, color]) => (
+          <div
+            key={type}
+            onClick={() => setHelpModalVisible(true)}
+            style={{
+              backgroundColor: interiorColors[type],
+              border: `2px solid ${color}`,
+              borderRadius: '16px',
+              padding: '0.5rem 1rem',
+              cursor: 'pointer',
+              textTransform: 'capitalize',
+              fontWeight: 'bold'
+            }}
+          >
+            {type}
+          </div>
+        ))}
+      </div>
+
       {/* Filters */}
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', alignItems: 'flex-end' }}>
         <div style={{ flex: 2, display: 'flex', flexDirection: 'column' }}>
@@ -166,6 +189,10 @@ export default function ProjectDashboard({ filterUser }) {
         ))}
         {visible.length === 0 && <p>No project tasks to display.</p>}
       </div>
+      <EisenhowerHelpModal
+        visible={isHelpModalVisible}
+        onClose={() => setHelpModalVisible(false)}
+      />
     </div>
   );
 }

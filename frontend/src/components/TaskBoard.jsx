@@ -6,7 +6,7 @@ import EisenhowerHelpModal from './EisenhowerHelpModal';
 import { getTasksForUser } from '../api/tasks';
 import { getSupervisees } from '../api/users';
 import { AuthContext } from '../AuthContext';
-import { getTaskColor } from '../utils/getTaskColor';
+import { getTaskColor, borderColors, interiorColors } from '../utils/getTaskColor';
 import { FaQuestionCircle } from 'react-icons/fa';
 
 export default function TaskBoard({ filterUser }) {
@@ -59,7 +59,7 @@ export default function TaskBoard({ filterUser }) {
     };
     align();
     return () => { clearTimeout(tId); clearInterval(iId); };
-  }, [fetchTasks]);
+  }, [fetchTasks, filterUser]);
 
   const viewingOther = viewingUserId !== user.user_id;
   const allowed = !viewingOther || ['manager', 'hr'].includes(user.role) || superviseeIds.includes(viewingUserId);
@@ -139,6 +139,27 @@ export default function TaskBoard({ filterUser }) {
           {showHelp && <EisenhowerHelpModal visible={true} onClose={() => setShowHelp(false)} />}
         </>
       )}
+
+      {/* Eisenhower Matrix Capsules */}
+      <div style={{ display: 'flex', gap: '0.5rem', padding: '0 1rem 1rem' }}>
+        {Object.entries(borderColors).map(([type, color]) => (
+          <div
+            key={type}
+            onClick={() => setShowHelp(true)}
+            style={{
+              backgroundColor: interiorColors[type],
+              border: `2px solid ${color}`,
+              borderRadius: '16px',
+              padding: '0.5rem 1rem',
+              cursor: 'pointer',
+              textTransform: 'capitalize',
+              fontWeight: 'bold'
+            }}
+          >
+            {type}
+          </div>
+        ))}
+      </div>
 
       {/* Filters Section */}
       <div style={{ display: 'flex', gap: '1.5rem', padding: '0 1rem', marginBottom: '1rem', alignItems: 'flex-end' }}>

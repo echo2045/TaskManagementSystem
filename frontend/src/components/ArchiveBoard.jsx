@@ -4,7 +4,8 @@ import TaskCard from './TaskCard';
 import { getArchivedTasksForUser } from '../api/tasks';
 import { getSupervisees } from '../api/users';
 import { AuthContext } from '../AuthContext';
-import { getTaskColor } from '../utils/getTaskColor';
+import { getTaskColor, borderColors, interiorColors } from '../utils/getTaskColor';
+import EisenhowerHelpModal from './EisenhowerHelpModal';
 
 export default function ArchiveBoard({ filterUser, currentUser }) {
   const { user } = useContext(AuthContext);
@@ -16,6 +17,7 @@ export default function ArchiveBoard({ filterUser, currentUser }) {
   const [dateFilter, setDateFilter] = useState('');
   const [groupByStartDate, setGroupByStartDate] = useState(false);
   const [superviseeIds, setSuperviseeIds] = useState([]);
+  const [isHelpModalVisible, setHelpModalVisible] = useState(false);
 
   const viewingUserId = filterUser?.user_id || currentUser.user_id;
 
@@ -53,7 +55,7 @@ export default function ArchiveBoard({ filterUser, currentUser }) {
       clearTimeout(tId);
       clearInterval(iId);
     };
-  }, [fetchArchive]);
+  }, [fetchArchive, filterUser]);
 
   const viewingOther = viewingUserId !== currentUser.user_id;
   const allowed = !viewingOther
@@ -113,6 +115,27 @@ export default function ArchiveBoard({ filterUser, currentUser }) {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ padding: '0 1rem' }}>
         <h3>Archive</h3>
+      </div>
+
+      {/* Eisenhower Matrix Capsules */}
+      <div style={{ display: 'flex', gap: '0.5rem', padding: '0 1rem 1rem' }}>
+        {Object.entries(borderColors).map(([type, color]) => (
+          <div
+            key={type}
+            onClick={() => setHelpModalVisible(true)}
+            style={{
+              backgroundColor: interiorColors[type],
+              border: `2px solid ${color}`,
+              borderRadius: '16px',
+              padding: '0.5rem 1rem',
+              cursor: 'pointer',
+              textTransform: 'capitalize',
+              fontWeight: 'bold'
+            }}
+          >
+            {type}
+          </div>
+        ))}
       </div>
 
       {/* Search */}
@@ -206,6 +229,10 @@ export default function ArchiveBoard({ filterUser, currentUser }) {
           </div>
         ))}
       </div>
+      <EisenhowerHelpModal
+        visible={isHelpModalVisible}
+        onClose={() => setHelpModalVisible(false)}
+      />
     </div>
   );
 }
