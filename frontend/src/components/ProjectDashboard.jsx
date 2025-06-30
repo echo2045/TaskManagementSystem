@@ -7,7 +7,7 @@ import { getAllProjects } from '../api/projects';
 import { AuthContext } from '../AuthContext';
 import { getTaskColor } from '../utils/getTaskColor';
 
-export default function ProjectDashboard({ filterUser, viewingOwnOnly }) {
+export default function ProjectDashboard({ filterUser }) {
   const { user } = useContext(AuthContext);
 
   const [tasks, setTasks] = useState([]);
@@ -17,7 +17,7 @@ export default function ProjectDashboard({ filterUser, viewingOwnOnly }) {
   const [typeFilter, setTypeFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   const [projectFilter, setProjectFilter] = useState('');
-  const [groupBy, setGroupBy] = useState('deadline');
+  const [groupByStartDate, setGroupByStartDate] = useState(false);
   const [superviseeIds, setSuperviseeIds] = useState([]);
 
   const viewingUserId = filterUser?.user_id || user.user_id;
@@ -85,21 +85,18 @@ export default function ProjectDashboard({ filterUser, viewingOwnOnly }) {
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
       if (typeFilter && getTaskColor(t.importance, t.urgency) !== typeFilter) return false;
       if (projectFilter && t.project_id !== Number(projectFilter)) return false;
-      const baseDate = groupBy === 'start_date' ? t.start_date : t.deadline;
-      if (dateFilter && new Date(baseDate).toLocaleDateString() !== new Date(dateFilter).toLocaleDateString()) return false;
+      const compareDate = groupByStartDate ? t.start_date : t.deadline;
+      if (dateFilter && new Date(compareDate).toLocaleDateString() !== new Date(dateFilter).toLocaleDateString()) return false;
       return true;
     });
 
-  const grouped = visible.reduce((acc, t) => {
-    const baseDate = groupBy === 'start_date' ? t.start_date : t.deadline;
-    const key = new Date(baseDate).toLocaleDateString();
-    (acc[key] = acc[key] || []).push(t);
-    return acc;
-  }, {});
-
-  const sortedGroups = Object.entries(grouped).sort(
-    ([a], [b]) => new Date(a) - new Date(b)
-  );
+  const grouped = visible
+    .sort((a, b) => new Date(groupByStartDate ? a.start_date : a.deadline) - new Date(groupByStartDate ? b.start_date : b.deadline))
+    .reduce((acc, t) => {
+      const key = new Date(groupByStartDate ? t.start_date : t.deadline).toLocaleDateString();
+      (acc[key] = acc[key] || []).push(t);
+      return acc;
+    }, {});
 
   return (
     <div style={{
@@ -135,9 +132,13 @@ export default function ProjectDashboard({ filterUser, viewingOwnOnly }) {
           ))}
         </select>
 
-        <select value={groupBy} onChange={e => setGroupBy(e.target.value)} style={{ height: '2.5rem' }}>
+        <select
+          value={groupByStartDate ? 'start' : 'deadline'}
+          onChange={e => setGroupByStartDate(e.target.value === 'start')}
+          style={{ height: '2.5rem' }}
+        >
           <option value="deadline">Group by Deadline</option>
-          <option value="start_date">Group by Start Date</option>
+          <option value="start">Group by Start Date</option>
         </select>
 
         <input
@@ -149,9 +150,9 @@ export default function ProjectDashboard({ filterUser, viewingOwnOnly }) {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {sortedGroups.map(([date, items]) => (
+        {Object.entries(grouped).map(([date, items]) => (
           <div key={date}>
-            <h4>{date}</h4>
+            <h4><strong>{groupByStartDate ? 'Start Date' : 'Deadline'}:</strong> {date}</h4>
             {items.map(t => (
               <TaskCard
                 key={t.task_id}

@@ -6,7 +6,7 @@ import { getAllAreas } from '../api/areas';
 import TaskCard from './TaskCard';
 import { getTaskColor } from '../utils/getTaskColor';
 
-export default function AreaDashboard({ viewingOwnOnly = false }) {
+export default function AreaDashboard() {
   const { user } = useContext(AuthContext);
   const [tasks, setTasks] = useState([]);
   const [areas, setAreas] = useState([]);
@@ -14,7 +14,7 @@ export default function AreaDashboard({ viewingOwnOnly = false }) {
   const [typeFilter, setTypeFilter] = useState('');
   const [areaFilter, setAreaFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
-  const [groupBy, setGroupBy] = useState('deadline');
+  const [groupByStartDate, setGroupByStartDate] = useState(false);
 
   const fetchTasks = async () => {
     try {
@@ -60,19 +60,17 @@ export default function AreaDashboard({ viewingOwnOnly = false }) {
   }
   if (dateFilter) {
     visible = visible.filter(t =>
-      new Date(t[groupBy]).toLocaleDateString() === new Date(dateFilter).toLocaleDateString()
+      new Date(groupByStartDate ? t.start_date : t.deadline).toLocaleDateString() === new Date(dateFilter).toLocaleDateString()
     );
   }
 
-  const grouped = visible.reduce((acc, t) => {
-    const key = new Date(t[groupBy]).toLocaleDateString();
-    (acc[key] = acc[key] || []).push(t);
-    return acc;
-  }, {});
-
-  const sortedGroups = Object.entries(grouped).sort(
-    ([a], [b]) => new Date(a) - new Date(b)
-  );
+  const grouped = visible
+    .sort((a, b) => new Date(groupByStartDate ? a.start_date : a.deadline) - new Date(groupByStartDate ? b.start_date : b.deadline))
+    .reduce((acc, t) => {
+      const key = new Date(groupByStartDate ? t.start_date : t.deadline).toLocaleDateString();
+      (acc[key] = acc[key] || []).push(t);
+      return acc;
+    }, {});
 
   return (
     <div style={{
@@ -119,9 +117,13 @@ export default function AreaDashboard({ viewingOwnOnly = false }) {
           ))}
         </select>
 
-        <select value={groupBy} onChange={e => setGroupBy(e.target.value)} style={{ height: '2.5rem' }}>
+        <select
+          value={groupByStartDate ? 'start' : 'deadline'}
+          onChange={e => setGroupByStartDate(e.target.value === 'start')}
+          style={{ height: '2.5rem' }}
+        >
           <option value="deadline">Group by Deadline</option>
-          <option value="start_date">Group by Start Date</option>
+          <option value="start">Group by Start Date</option>
         </select>
 
         <input
@@ -134,9 +136,9 @@ export default function AreaDashboard({ viewingOwnOnly = false }) {
 
       {/* Task list */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {sortedGroups.map(([date, items]) => (
+        {Object.entries(grouped).map(([date, items]) => (
           <div key={date}>
-            <h4>{date}</h4>
+            <h4><strong>{groupByStartDate ? 'Start Date' : 'Deadline'}:</strong> {date}</h4>
             {items.map(t => {
               const area = areas.find(a => a.area_id === t.area_id);
               return (

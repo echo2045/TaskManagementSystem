@@ -14,7 +14,7 @@ export default function ArchiveBoard({ filterUser, currentUser }) {
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
-  const [groupBy, setGroupBy] = useState('deadline');
+  const [groupByStartDate, setGroupByStartDate] = useState(false);
   const [superviseeIds, setSuperviseeIds] = useState([]);
 
   const viewingUserId = filterUser?.user_id || currentUser.user_id;
@@ -95,22 +95,19 @@ export default function ArchiveBoard({ filterUser, currentUser }) {
   }
   if (dateFilter) {
     archived = archived.filter(t => {
-      const baseDate = groupBy === 'start_date' ? t.start_date : t.deadline;
-      return new Date(baseDate).toLocaleDateString() === new Date(dateFilter).toLocaleDateString();
+      const compareDate = groupByStartDate ? t.start_date : t.deadline;
+      return new Date(compareDate).toLocaleDateString() === new Date(dateFilter).toLocaleDateString();
     });
   }
 
   // Group and sort
-  const grouped = archived.reduce((acc, t) => {
-    const baseDate = groupBy === 'start_date' ? t.start_date : t.deadline;
-    const key = new Date(baseDate).toLocaleDateString();
-    (acc[key] = acc[key] || []).push(t);
-    return acc;
-  }, {});
-
-  const sortedGroups = Object.entries(grouped).sort(
-    ([a], [b]) => new Date(a) - new Date(b)
-  );
+  const grouped = archived
+    .sort((a, b) => new Date(groupByStartDate ? a.start_date : a.deadline) - new Date(groupByStartDate ? b.start_date : b.deadline))
+    .reduce((acc, t) => {
+      const key = new Date(groupByStartDate ? t.start_date : t.deadline).toLocaleDateString();
+      (acc[key] = acc[key] || []).push(t);
+      return acc;
+    }, {});
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -160,14 +157,14 @@ export default function ArchiveBoard({ filterUser, currentUser }) {
           </select>
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <label style={{ fontSize: '0.9rem' }}>Group by</label>
+          <label style={{ fontSize: '0.9rem' }}>Group By</label>
           <select
-            value={groupBy}
-            onChange={e => setGroupBy(e.target.value)}
+            value={groupByStartDate ? 'start' : 'deadline'}
+            onChange={e => setGroupByStartDate(e.target.value === 'start')}
             style={{ padding: '0.5rem' }}
           >
             <option value="deadline">Deadline</option>
-            <option value="start_date">Start Date</option>
+            <option value="start">Start Date</option>
           </select>
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -191,9 +188,11 @@ export default function ArchiveBoard({ filterUser, currentUser }) {
 
       {/* Archived Task List */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 1rem' }}>
-        {sortedGroups.map(([date, items]) => (
+        {Object.entries(grouped).map(([date, items]) => (
           <div key={date}>
-            <h4 style={{ margin: '1rem 0 0.5rem' }}>{date}</h4>
+            <h4 style={{ margin: '1rem 0 0.5rem' }}>
+              <strong>{groupByStartDate ? 'Start Date' : 'Deadline'}:</strong> {date}
+            </h4>
             {items.map(task => (
               <TaskCard
                 key={task.task_id}
