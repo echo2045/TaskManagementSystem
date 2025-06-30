@@ -195,7 +195,9 @@ export default function TaskBoard({ filterUser }) {
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 1rem' }}>
         {Object.entries(grouped).map(([date, items]) => (
           <div key={date}>
-            <h4 style={{ margin: '1rem 0 0.5rem' }}>{date}</h4>
+            <h4 style={{ margin: '1rem 0 0.5rem' }}>
+              <strong>{groupByStartDate ? 'Start Date' : 'Deadline'}:</strong> {date}
+            </h4>
             {items.map(t => (
               <TaskCard key={t.task_id} task={t} viewingUserId={viewingUserId} onStatusChange={fetchTasks} />
             ))}
