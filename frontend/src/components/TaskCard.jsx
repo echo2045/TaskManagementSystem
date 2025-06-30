@@ -162,10 +162,15 @@ export default function TaskCard({
     }
   };
 
+  const isCompleted = canOwnerToggleActive || canOwnerToggleArchive
+    ? task.status === 'completed'
+    : isAssigneeCompleted;
+
   return (
     <>
       <div
         onClick={() => setShowDetails(true)}
+        className={`task-card ${isCompleted ? 'completed' : ''}`}
         style={{
           border: `2px solid ${border}`,
           background: cardBg,
@@ -188,19 +193,20 @@ export default function TaskCard({
           minWidth: 0,
           overflow: 'hidden'
         }}>
-          <input
-            type="checkbox"
-            checked={
-              canOwnerToggleActive || canOwnerToggleArchive
-                ? task.status === 'completed'
-                : isAssigneeCompleted
-            }
-            onChange={handleComplete}
-            onClick={(e) => e.stopPropagation()}
-            disabled={!(canOwnerToggleActive || canOwnerToggleArchive || canAssigneeToggle)}
-          />
+          <label className="custom-checkbox-container">
+            <input
+              type="checkbox"
+              checked={isCompleted}
+              onChange={handleComplete}
+              onClick={(e) => e.stopPropagation()}
+              disabled={!(canOwnerToggleActive || canOwnerToggleArchive || canAssigneeToggle)}
+              className="task-checkbox"
+              title="Mark task as complete"
+            />
+            <span className="checkmark"></span>
+          </label>
           <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '1rem', width: '100%' }}>
-            <span style={{
+            <span className="task-title" style={{
               fontWeight: 'bold',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
@@ -215,7 +221,7 @@ export default function TaskCard({
               textOverflow: 'ellipsis',
               fontSize: '1rem',
               color: '#555',
-              width: '130px'
+              width: '200px'
             }}>
               Owner: {task.owner_name}
             </span>
