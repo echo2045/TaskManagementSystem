@@ -15,6 +15,7 @@ import {
 } from '../api/tasks';
 import DelegateModal from './DelegateModal';
 import TaskDetailsModal from './TaskDetailsModal';
+import ConfirmationModal from './ConfirmationModal';
 
 export default function TaskCard({
   task,
@@ -29,6 +30,9 @@ export default function TaskCard({
   const isAuthOwner = authUser.user_id === task.owner_id;
 
   const [assignees, setAssignees] = useState([]);
+  const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
+  const [completionState, setCompletionState] = useState(null);
+
   useEffect(() => {
     getAssignees(task.task_id).then(setAssignees).catch(console.error);
   }, [task.task_id]);
@@ -62,20 +66,20 @@ export default function TaskCard({
   const canOwnerToggleArchive = isArchived && isAuthOwner && viewingUserId === authUser.user_id && task.status !== 'completed';
   const canAssigneeToggle = !isArchived && viewIsAssignee && authUser.user_id === viewingUserId;
 
-  const handleComplete = async e => {
+  const handleComplete = e => {
     e.stopPropagation();
     const checked = e.target.checked;
 
     if (checked) {
-      const confirmation = window.confirm(
-        'Are you sure you want to mark this task as complete?'
-      );
-      if (!confirmation) {
-        e.target.checked = false;
-        return;
-      }
+      setCompletionState({ checked });
+      setIsConfirmModalVisible(true);
+    } else {
+      // Unchecking does not require confirmation
+      proceedWithCompletion(false);
     }
+  };
 
+  const proceedWithCompletion = async (checked) => {
     try {
       if (canOwnerToggleActive || canOwnerToggleArchive) {
         await updateTask(task.task_id, { status: checked ? 'completed' : 'pending' });
@@ -89,10 +93,12 @@ export default function TaskCard({
       }
     } catch (err) {
       console.error('Error updating completion:', err);
-      e.target.checked = !checked;
+      // Revert UI change on error
+    } finally {
+      setIsConfirmModalVisible(false);
+      setCompletionState(null);
+      onStatusChange?.();
     }
-
-    onStatusChange?.();
   };
 
   const handleDelete = async e => {
@@ -356,6 +362,17 @@ export default function TaskCard({
           }}
         />
       )}
+
+      <ConfirmationModal
+        visible={isConfirmModalVisible}
+        onClose={() => {
+          setIsConfirmModalVisible(false);
+          setCompletionState(null);
+        }}
+        onConfirm={() => proceedWithCompletion(completionState.checked)}
+        title="Confirm Task Completion"
+        message="Are you sure you want to mark this task as complete?"
+      />
     </>
   );
 }
