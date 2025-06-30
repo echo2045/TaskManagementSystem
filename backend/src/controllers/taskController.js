@@ -285,6 +285,22 @@ const assignTask = async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, $6)
     `, [task_id, user_id, assigned_by, importance, urgency, normalizedStart]);
 
+    // Fetch task and user details for the notification message
+    const taskInfo = await pool.query('SELECT title FROM tasks WHERE task_id = $1', [task_id]);
+    const assignerInfo = await pool.query('SELECT full_name FROM users WHERE user_id = $1', [assigned_by]);
+
+    if (taskInfo.rows.length > 0 && assignerInfo.rows.length > 0) {
+      const taskTitle = taskInfo.rows[0].title;
+      const assignerName = assignerInfo.rows[0].full_name;
+      const message = `${assignerName} assigned you a new task: "${taskTitle}"`;
+
+      // Create notification for the assignee
+      await pool.query(
+        'INSERT INTO notifications (user_id, message) VALUES ($1, $2)',
+        [user_id, message]
+      );
+    }
+
     res.status(201).json({ message: 'Task assigned successfully.' });
   } catch (err) {
     console.error('Error assigning task:', err.message);
