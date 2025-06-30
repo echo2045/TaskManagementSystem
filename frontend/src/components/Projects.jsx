@@ -106,7 +106,7 @@ export default function Projects() {
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', alignItems: 'flex-end' }}>
           <div style={{ flex: 2 }}>
             <label style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem', display: 'block' }}>
-              Search Project Tasks
+              Search Projects
             </label>
             <input
               placeholder="Search projects"
