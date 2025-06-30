@@ -66,6 +66,16 @@ export default function TaskCard({
     e.stopPropagation();
     const checked = e.target.checked;
 
+    if (checked) {
+      const confirmation = window.confirm(
+        'Are you sure you want to mark this task as complete?'
+      );
+      if (!confirmation) {
+        e.target.checked = false;
+        return;
+      }
+    }
+
     try {
       if (canOwnerToggleActive || canOwnerToggleArchive) {
         await updateTask(task.task_id, { status: checked ? 'completed' : 'pending' });
@@ -79,6 +89,7 @@ export default function TaskCard({
       }
     } catch (err) {
       console.error('Error updating completion:', err);
+      e.target.checked = !checked;
     }
 
     onStatusChange?.();
