@@ -187,7 +187,7 @@ export default function App() {
             boxSizing: 'border-box',
             height: '100%'
           }}>
-            <UserStatus userId={user.user_id} />
+            <UserStatus selectedUser={selectedUser} currentUser={user} />
             {renderMain()}
           </main>
 

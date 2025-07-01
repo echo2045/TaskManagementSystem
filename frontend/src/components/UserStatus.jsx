@@ -1,25 +1,75 @@
-// src/components/UserStatus.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { getCurrentTask, getWorkHistory } from '../api/tasks';
+import { getSupervisees } from '../api/users';
 import WorkHistoryModal from './WorkHistoryModal';
 
-export default function UserStatus({ userId }) {
+export default function UserStatus({ selectedUser, currentUser }) {
     const [currentTask, setCurrentTask] = useState(null);
     const [workHistory, setWorkHistory] = useState([]);
     const [isHistoryVisible, setHistoryVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [hasAccess, setHasAccess] = useState(true);
+    const [displayUserId, setDisplayUserId] = useState(currentUser.user_id);
+
+    useEffect(() => {
+        const checkAccess = async () => {
+            if (!selectedUser) {
+                setDisplayUserId(currentUser.user_id);
+                setHasAccess(true);
+                return;
+            }
+
+            if (currentUser.user_id === selectedUser.user_id) {
+                setDisplayUserId(currentUser.user_id);
+                setHasAccess(true);
+                return;
+            }
+
+            if (currentUser.role === 'manager' || currentUser.role === 'hr') {
+                setDisplayUserId(selectedUser.user_id);
+                setHasAccess(true);
+                return;
+            }
+
+            if (currentUser.role === 'team_lead') {
+                try {
+                    const supervisees = await getSupervisees(currentUser.user_id);
+                    const isSupervisee = supervisees.some(s => s.user_id === selectedUser.user_id);
+                    if (isSupervisee) {
+                        setDisplayUserId(selectedUser.user_id);
+                        setHasAccess(true);
+                    } else {
+                        setHasAccess(false);
+                    }
+                } catch (error) {
+                    console.error("Error fetching supervisees:", error);
+                    setHasAccess(false);
+                }
+                return;
+            }
+
+            setHasAccess(false);
+        };
+
+        checkAccess();
+    }, [selectedUser, currentUser]);
 
     const fetchStatus = useCallback(async () => {
+        if (!hasAccess || !displayUserId) {
+            setIsLoading(false);
+            setCurrentTask(null);
+            return;
+        }
         try {
             setIsLoading(true);
-            const task = await getCurrentTask(userId);
+            const task = await getCurrentTask(displayUserId);
             setCurrentTask(task);
         } catch (error) {
             console.error("Error fetching user status:", error);
         } finally {
             setIsLoading(false);
         }
-    }, [userId]);
+    }, [hasAccess, displayUserId]);
 
     useEffect(() => {
         fetchStatus();
@@ -28,14 +78,25 @@ export default function UserStatus({ userId }) {
     }, [fetchStatus]);
 
     const handleShowHistory = async () => {
+        if (!hasAccess || !displayUserId) return;
         try {
-            const history = await getWorkHistory(userId);
+            const history = await getWorkHistory(displayUserId);
             setWorkHistory(history);
             setHistoryVisible(true);
         } catch (error) {
             console.error("Error fetching work history:", error);
         }
     };
+
+    if (!hasAccess) {
+        return (
+            <div style={statusContainer}>
+                <div style={statusText}>
+                    <strong>Access Denied:</strong> You do not have permission to view this user's activity status.
+                </div>
+            </div>
+        );
+    }
 
     if (isLoading) {
         return <div>Loading status...</div>;
@@ -44,7 +105,7 @@ export default function UserStatus({ userId }) {
     return (
         <div style={statusContainer}>
             <div style={statusText}>
-                <strong>Current Status:</strong>
+                <strong>Current Status for {selectedUser ? selectedUser.full_name : 'You'}:</strong>
                 {currentTask ? (
                     <span> Working on: <em>{currentTask.title}</em> (since {new Date(currentTask.start_time).toLocaleTimeString()})</span>
                 ) : (
