@@ -114,9 +114,9 @@ export default function UserStatus({ selectedUser, currentUser }) {
             </div>
             <button onClick={handleShowHistory} style={historyButton}>View History</button>
 
-            {isHistoryVisible && (
+            {isHistoryVisible && displayUserId && (
                 <WorkHistoryModal
-                    history={workHistory}
+                    userId={displayUserId}
                     onClose={() => setHistoryVisible(false)}
                 />
             )}

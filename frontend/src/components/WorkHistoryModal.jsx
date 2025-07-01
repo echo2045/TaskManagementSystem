@@ -1,16 +1,112 @@
-// src/components/WorkHistoryModal.jsx
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { getWorkHistory, getTasksForUser } from '../api/tasks';
+import { getTaskColor } from '../utils/getTaskColor';
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import DayScheduleView from './DayScheduleView';
+import WeekScheduleView from './WeekScheduleView';
 
-export default function WorkHistoryModal({ history, onClose }) {
+export default function WorkHistoryModal({ userId, onClose }) {
+    const [workSessions, setWorkSessions] = useState([]);
+    const [allTasks, setAllTasks] = useState([]);
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [currentView, setCurrentView] = useState('day'); // 'day' or 'week'
+    const [taskTypeFilter, setTaskTypeFilter] = useState('');
+    const [taskStatusFilter, setTaskStatusFilter] = useState('all'); // 'all', 'pending', 'completed', 'late', 'incomplete'
 
-    const calculateTotalHours = (sessions) => {
-        return sessions.reduce((acc, session) => acc + (session.hours_spent ? parseFloat(session.hours_spent) : 0), 0).toFixed(2);
+    const fetchWorkData = useCallback(async () => {
+        try {
+            const history = await getWorkHistory(userId);
+            setWorkSessions(history);
+            const tasks = await getTasksForUser(); // Fetch all tasks to get their details
+            setAllTasks(tasks);
+        } catch (error) {
+            console.error("Error fetching work history or tasks:", error);
+        }
+    }, [userId]);
+
+    useEffect(() => {
+        if (userId) {
+            fetchWorkData();
+        }
+    }, [fetchWorkData, userId]);
+
+    const getFilteredSessions = () => {
+        let filtered = workSessions;
+
+        // Filter by date
+        if (currentView === 'day') {
+            filtered = filtered.filter(session => {
+                const sessionDate = new Date(session.start_time);
+                return sessionDate.toDateString() === selectedDate.toDateString();
+            });
+        } else { // week view
+            const startOfWeek = new Date(selectedDate);
+            startOfWeek.setDate(selectedDate.getDate() - selectedDate.getDay()); // Sunday
+            startOfWeek.setHours(0, 0, 0, 0);
+
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 7); // Next Sunday
+
+            filtered = filtered.filter(session => {
+                const sessionDate = new Date(session.start_time);
+                return sessionDate >= startOfWeek && sessionDate < endOfWeek;
+            });
+        }
+
+        // Filter by task type (Eisenhower matrix type)
+        if (taskTypeFilter) {
+            filtered = filtered.filter(session => {
+                const task = allTasks.find(t => t.task_id === session.task_id);
+                return task && getTaskColor(task.importance, task.urgency) === taskTypeFilter;
+            });
+        }
+
+        // Filter by task status
+        if (taskStatusFilter !== 'all') {
+            filtered = filtered.filter(session => {
+                const task = allTasks.find(t => t.task_id === session.task_id);
+                if (!task) return false;
+
+                if (taskStatusFilter === 'completed') return task.status === 'completed';
+                if (taskStatusFilter === 'pending') return task.status === 'pending';
+                
+                // For 'late' and 'incomplete', we need more logic
+                const now = new Date();
+                const deadline = new Date(task.deadline);
+
+                if (taskStatusFilter === 'late') {
+                    return task.status === 'completed' && deadline < new Date(session.end_time);
+                }
+                if (taskStatusFilter === 'incomplete') {
+                    return task.status === 'pending' && deadline < now;
+                }
+                return true;
+            });
+        }
+
+        return filtered;
     };
 
-    const calculateTimeDifference = (estimated, spent) => {
-        if (estimated === null || spent === null) return 'N/A';
-        const difference = estimated - spent;
-        return difference.toFixed(2);
+    const navigateDate = (direction) => {
+        const newDate = new Date(selectedDate);
+        if (currentView === 'day') {
+            newDate.setDate(newDate.getDate() + direction);
+        } else {
+            newDate.setDate(newDate.getDate() + (direction * 7));
+        }
+        setSelectedDate(newDate);
+    };
+
+    const getDisplayDate = () => {
+        if (currentView === 'day') {
+            return selectedDate.toLocaleDateString('en-CA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        } else {
+            const startOfWeek = new Date(selectedDate);
+            startOfWeek.setDate(selectedDate.getDate() - selectedDate.getDay());
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+            return `${startOfWeek.toLocaleDateString('en-CA')} - ${endOfWeek.toLocaleDateString('en-CA')}`;
+        }
     };
 
     return (
@@ -18,43 +114,71 @@ export default function WorkHistoryModal({ history, onClose }) {
             <div style={modal}>
                 <button onClick={onClose} style={closeBtn}>×</button>
                 <h2>Work History</h2>
-                <div style={scrollContainer}>
-                    {history.length > 0 ? (
-                        <table style={table}>
-                            <thead>
-                                <tr>
-                                    <th style={th}>Task</th>
-                                    <th style={th}>Start Time</th>
-                                    <th style={th}>End Time</th>
-                                    <th style={th}>Duration (hours)</th>
-                                    <th style={th}>Estimated (hours)</th>
-                                    <th style={th}>Difference</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {history.map(session => (
-                                    <tr key={session.session_id}>
-                                        <td style={td}>{session.title}</td>
-                                        <td style={td}>{new Date(session.start_time).toLocaleString()}</td>
-                                        <td style={td}>{session.end_time ? new Date(session.end_time).toLocaleString() : 'In Progress'}</td>
-                                        <td style={td}>{session.hours_spent ? parseFloat(session.hours_spent).toFixed(2) : '-'}</td>
-                                        <td style={td}>{session.time_estimate || 'N/A'}</td>
-                                        <td style={td}>{calculateTimeDifference(session.time_estimate, session.hours_spent)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <td colSpan="3" style={{...td, textAlign: 'right', fontWeight: 'bold'}}>Total Hours:</td>
-                                    <td style={{...td, fontWeight: 'bold'}}>{calculateTotalHours(history)}</td>
-                                    <td colSpan="2"></td>
-                                </tr>
-                            </tfoot>
-                        </table>
+
+                <div style={controlsContainer}>
+                    <div style={dateNavigation}>
+                        <button onClick={() => navigateDate(-1)} style={navButton}><FaChevronLeft /></button>
+                        <input
+                            type={currentView === 'day' ? 'date' : 'text'}
+                            value={currentView === 'day' ? selectedDate.toISOString().split('T')[0] : getDisplayDate()}
+                            onChange={(e) => {
+                                if (currentView === 'day') setSelectedDate(new Date(e.target.value));
+                            }}
+                            style={dateInput}
+                            readOnly={currentView === 'week'}
+                        />
+                        <button onClick={() => navigateDate(1)} style={navButton}><FaChevronRight /></button>
+                    </div>
+
+                    <div style={viewToggle}>
+                        <button
+                            onClick={() => setCurrentView('day')}
+                            style={{ ...toggleButton, background: currentView === 'day' ? '#007bff' : '#ccc' }}
+                        >
+                            Day
+                        </button>
+                        <button
+                            onClick={() => setCurrentView('week')}
+                            style={{ ...toggleButton, background: currentView === 'week' ? '#007bff' : '#ccc' }}
+                        >
+                            Week
+                        </button>
+                    </div>
+                </div>
+
+                <div style={filtersContainer}>
+                    <select value={taskTypeFilter} onChange={e => setTaskTypeFilter(e.target.value)} style={filterSelect}>
+                        <option value="">All Types</option>
+                        <option value="do">Do</option>
+                        <option value="schedule">Schedule</option>
+                        <option value="delegate">Delegate</option>
+                        <option value="eliminate">Eliminate</option>
+                    </select>
+                    <select value={taskStatusFilter} onChange={e => setTaskStatusFilter(e.target.value)} style={filterSelect}>
+                        <option value="all">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="completed">Completed</option>
+                        <option value="late">Late</option>
+                        <option value="incomplete">Incomplete</option>
+                    </select>
+                </div>
+
+                <div style={scheduleContainer}>
+                    {currentView === 'day' ? (
+                        <DayScheduleView
+                            sessions={getFilteredSessions()}
+                            selectedDate={selectedDate}
+                            allTasks={allTasks}
+                        />
                     ) : (
-                        <p>No work history found.</p>
+                        <WeekScheduleView
+                            sessions={getFilteredSessions()}
+                            selectedDate={selectedDate}
+                            allTasks={allTasks}
+                        />
                     )}
                 </div>
+
             </div>
         </div>
     );
@@ -75,8 +199,8 @@ const modal = {
     background: '#fff',
     padding: '2rem',
     borderRadius: '8px',
-    width: '80%',
-    maxWidth: '800px',
+    width: '90%',
+    maxWidth: '1000px',
     maxHeight: '90vh',
     display: 'flex',
     flexDirection: 'column'
@@ -92,25 +216,69 @@ const closeBtn = {
     cursor: 'pointer'
 };
 
-const scrollContainer = {
-    overflowY: 'auto'
+const controlsContainer = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '1rem',
+    gap: '1rem'
 };
 
-const table = {
-    width: '100%',
-    borderCollapse: 'collapse',
-    marginTop: '1rem'
+const dateNavigation = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem'
 };
 
-const th = {
-    borderBottom: '2px solid #ddd',
-    padding: '0.75rem',
-    textAlign: 'left',
-    backgroundColor: '#f7f7f7'
+const navButton = {
+    background: '#007bff',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    padding: '0.5rem 0.75rem',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
 };
 
-const td = {
-    borderBottom: '1px solid #ddd',
-    padding: '0.75rem',
-    textAlign: 'left'
+const dateInput = {
+    padding: '0.5rem',
+    borderRadius: '4px',
+    border: '1px solid #ccc',
+    textAlign: 'center'
+};
+
+const viewToggle = {
+    display: 'flex',
+    gap: '0.5rem'
+};
+
+const toggleButton = {
+    padding: '0.5rem 1rem',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    color: 'white'
+};
+
+const filtersContainer = {
+    display: 'flex',
+    gap: '1rem',
+    marginBottom: '1rem'
+};
+
+const filterSelect = {
+    padding: '0.5rem',
+    borderRadius: '4px',
+    border: '1px solid #ccc'
+};
+
+const scheduleContainer = {
+    flex: 1,
+    overflowY: 'auto',
+    border: '1px solid #eee',
+    borderRadius: '8px',
+    padding: '1rem',
+    backgroundColor: '#f9f9f9'
 };
