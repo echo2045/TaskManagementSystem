@@ -11,7 +11,10 @@ import {
   updateTask,
   deleteTask,
   markAssigneeComplete,
-  updateAssignmentStartDate
+  updateAssignmentStartDate,
+  startWorkSession,
+  stopWorkSession,
+  getCurrentTask
 } from '../api/tasks';
 import DelegateModal from './DelegateModal';
 import TaskDetailsModal from './TaskDetailsModal';
@@ -32,10 +35,25 @@ export default function TaskCard({
   const [assignees, setAssignees] = useState([]);
   const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
   const [completionState, setCompletionState] = useState(null);
+  const [currentActiveTask, setCurrentActiveTask] = useState(null);
 
   useEffect(() => {
     getAssignees(task.task_id).then(setAssignees).catch(console.error);
   }, [task.task_id]);
+
+  useEffect(() => {
+    const fetchCurrentActiveTask = async () => {
+      try {
+        const activeTask = await getCurrentTask(authUser.user_id);
+        setCurrentActiveTask(activeTask);
+      } catch (error) {
+        console.error("Error fetching current active task:", error);
+      }
+    };
+    fetchCurrentActiveTask();
+    const interval = setInterval(fetchCurrentActiveTask, 10000); // Refresh every 10 seconds
+    return () => clearInterval(interval);
+  }, [authUser.user_id]);
 
   const viewIsOwner = viewingUserId === task.owner_id;
   const viewIsAssignee = assignees.some(a => a.user_id === viewingUserId);
@@ -162,9 +180,36 @@ export default function TaskCard({
     }
   };
 
+  const handleStartWork = async (e) => {
+    e.stopPropagation();
+    try {
+      await startWorkSession(task.task_id);
+      const activeTask = await getCurrentTask(authUser.user_id);
+      setCurrentActiveTask(activeTask);
+    } catch (error) {
+      console.error("Error starting work session:", error);
+      alert(error.response?.data?.error || "Failed to start work session.");
+    }
+  };
+
+  const handleStopWork = async (e) => {
+    e.stopPropagation();
+    try {
+      await stopWorkSession();
+      const activeTask = await getCurrentTask(authUser.user_id);
+      setCurrentActiveTask(activeTask);
+    } catch (error) {
+      console.error("Error stopping work session:", error);
+      alert(error.response?.data?.error || "Failed to stop work session.");
+    }
+  };
+
   const isCompleted = canOwnerToggleActive || canOwnerToggleArchive
     ? task.status === 'completed'
     : isAssigneeCompleted;
+
+  const isWorkingOnThisTask = currentActiveTask && currentActiveTask.task_id === task.task_id;
+  const isWorkingOnAnotherTask = currentActiveTask && currentActiveTask.task_id !== task.task_id;
 
   return (
     <>
@@ -254,6 +299,18 @@ export default function TaskCard({
                 getStartDate()
               )}
             </span>
+            {task.time_estimate && (
+              <span style={{
+                fontSize: '1rem',
+                color: '#555',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                width: '135px'
+              }}>
+                Est: {task.time_estimate}h
+              </span>
+            )}
             {extraName && (
               <span style={{
                 whiteSpace: 'nowrap',
@@ -290,6 +347,43 @@ export default function TaskCard({
           justifyContent: 'flex-end',
           flex: 2
         }}>
+          {viewIsAssignee && authUser.user_id === viewingUserId && !isArchived && (
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {!isWorkingOnThisTask && (
+                <button
+                  onClick={handleStartWork}
+                  disabled={isWorkingOnAnotherTask}
+                  style={{
+                    padding: '0.3rem 0.6rem',
+                    backgroundColor: isWorkingOnAnotherTask ? '#ccc' : '#4CAF50',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: isWorkingOnAnotherTask ? 'not-allowed' : 'pointer',
+                    fontSize: '0.8rem'
+                  }}
+                >
+                  Start Work
+                </button>
+              )}
+              {isWorkingOnThisTask && (
+                <button
+                  onClick={handleStopWork}
+                  style={{
+                    padding: '0.3rem 0.6rem',
+                    backgroundColor: '#F44336',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem'
+                  }}
+                >
+                  Stop Work
+                </button>
+              )}
+            </div>
+          )}
           {showDelegateTag && (
             <span
               onClick={e => {
@@ -382,3 +476,4 @@ export default function TaskCard({
     </>
   );
 }
+

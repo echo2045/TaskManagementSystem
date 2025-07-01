@@ -5,7 +5,8 @@ import { getSupervisees, getUsers } from '../api/users';
 import {
   getAssignees,
   addAssignee,
-  removeAssignee
+  removeAssignee,
+  updateTask
 } from '../api/tasks';
 import { interiorColors } from '../utils/getTaskColor';
 import { FiHelpCircle } from 'react-icons/fi';
@@ -44,7 +45,7 @@ export default function DelegateModal({ taskId, onClose }) {
     const today = new Date().toLocaleDateString('en-CA');
     setPendingAssign(prev => ({
       ...prev,
-      [u.user_id]: { importance: 5, urgency: 5, start_date: today }
+      [u.user_id]: { importance: 5, urgency: 5, start_date: today, time_estimate: '' }
     }));
   };
 
@@ -68,6 +69,16 @@ export default function DelegateModal({ taskId, onClose }) {
     }));
   };
 
+  const handleTimeEstimateChange = (userId, value) => {
+    setPendingAssign(prev => ({
+        ...prev,
+        [userId]: {
+            ...prev[userId],
+            time_estimate: value
+        }
+    }));
+  };
+
   const toUtcIsoDate = (dateStr) => {
     if (!dateStr) return null;
     const localDate = new Date(dateStr);
@@ -76,10 +87,13 @@ export default function DelegateModal({ taskId, onClose }) {
   };
 
   const handleConfirmAssign = async (u) => {
-    const { importance, urgency, start_date } = pendingAssign[u.user_id];
+    const { importance, urgency, start_date, time_estimate } = pendingAssign[u.user_id];
     if (!start_date) return alert('Start date required');
     const isoDate = toUtcIsoDate(start_date);
     await addAssignee(taskId, u.user_id, importance, urgency, isoDate);
+    if (time_estimate) {
+        await updateTask(taskId, { time_estimate: Number(time_estimate) });
+    }
     setPendingAssign(prev => {
       const updated = { ...prev };
       delete updated[u.user_id];
@@ -187,6 +201,16 @@ export default function DelegateModal({ taskId, onClose }) {
                       type="date"
                       value={pendingAssign[u.user_id].start_date}
                       onChange={e => handleDateChange(u.user_id, e.target.value)}
+                      style={{ marginLeft: '0.5rem' }}
+                    />
+                  </label>
+                  <label>
+                    Time Estimate (hours):
+                    <input
+                      type="number"
+                      value={pendingAssign[u.user_id].time_estimate}
+                      onChange={e => handleTimeEstimateChange(u.user_id, e.target.value)}
+                      placeholder="e.g., 4.5"
                       style={{ marginLeft: '0.5rem' }}
                     />
                   </label>

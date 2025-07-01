@@ -1,7 +1,7 @@
 // src/components/TaskDetailsModal.jsx
 import React, { useState, useEffect, useContext } from 'react';
 import { getTaskColor, borderColors, interiorColors } from '../utils/getTaskColor';
-import { getAssignees, markAssigneeComplete } from '../api/tasks';
+import { getAssignees, markAssigneeComplete, getWorkHistory } from '../api/tasks';
 import DelegateModal from './DelegateModal';
 import EditTaskModal from './EditTaskModal';
 import { AuthContext } from '../AuthContext';
@@ -18,6 +18,7 @@ export default function TaskDetailsModal({
   const [assignees, setAssignees] = useState([]);
   const [showDelegate, setShowDelegate] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [totalHoursSpent, setTotalHoursSpent] = useState(0);
 
   useEffect(() => {
     if (getTaskColor(taskState.importance, taskState.urgency) === 'delegate') {
@@ -25,7 +26,18 @@ export default function TaskDetailsModal({
         .then(setAssignees)
         .catch(console.error);
     }
-  }, [taskState]);
+    const fetchTotalHours = async () => {
+      try {
+        const history = await getWorkHistory(user.user_id);
+        const taskSessions = history.filter(session => session.task_id === taskState.task_id);
+        const total = taskSessions.reduce((sum, session) => sum + (session.hours_spent || 0), 0);
+        setTotalHoursSpent(total);
+      } catch (error) {
+        console.error("Error fetching total hours spent:", error);
+      }
+    };
+    fetchTotalHours();
+  }, [taskState, user.user_id]);
 
   const handleToggleComplete = async (userId, checked) => {
     try {
@@ -58,6 +70,8 @@ export default function TaskDetailsModal({
     }
   }
 
+  const timeDifference = taskState.time_estimate !== null ? (taskState.time_estimate - totalHoursSpent).toFixed(2) : 'N/A';
+
   return (
     <div style={overlay}>
       <div style={{ ...modal, background: bgColor, border: `2px solid ${effectiveBorder}` }}>
@@ -88,6 +102,19 @@ export default function TaskDetailsModal({
         <p style={{ margin: '0.5rem 0' }}>
           <strong>Start Date:</strong> {taskState.start_date ? new Date(taskState.start_date).toLocaleDateString('en-CA') : '—'}
         </p>
+        {taskState.time_estimate !== null && (
+          <p style={{ margin: '0.5rem 0' }}>
+            <strong>Estimated Time:</strong> {taskState.time_estimate} hours
+          </p>
+        )}
+        <p style={{ margin: '0.5rem 0' }}>
+          <strong>Total Hours Spent:</strong> {totalHoursSpent.toFixed(2)} hours
+        </p>
+        {taskState.time_estimate !== null && (
+          <p style={{ margin: '0.5rem 0' }}>
+            <strong>Time Difference (Est - Spent):</strong> {timeDifference} hours
+          </p>
+        )}
 
         {badge && (
           <span style={{

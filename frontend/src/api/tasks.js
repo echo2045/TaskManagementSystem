@@ -72,3 +72,23 @@ export function updateAssignmentStartDate(task_id, user_id, start_date) {
     start_date: start_date ? new Date(start_date).toISOString() : null
   });
 }
+
+// Start a work session for a task
+export function startWorkSession(taskId) {
+  return axios.post(`${BASE_URL}/${taskId}/start`);
+}
+
+// Stop the current work session
+export function stopWorkSession() {
+  return axios.post(`${BASE_URL}/stop`);
+}
+
+// Get a user's work history
+export function getWorkHistory(userId) {
+  return axios.get(`${BASE_URL}/users/${userId}/work-history`).then(res => res.data);
+}
+
+// Get the task a user is currently working on
+export function getCurrentTask(userId) {
+  return axios.get(`${BASE_URL}/users/${userId}/current-task`).then(res => res.data);
+}

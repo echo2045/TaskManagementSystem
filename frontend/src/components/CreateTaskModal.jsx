@@ -17,7 +17,8 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
     importance: 3,
     urgency: 3,
     project_id: null,
-    area_id: null
+    area_id: null,
+    time_estimate: ''
   });
   const [projects, setProjects] = useState([]);
   const [areas, setAreas] = useState([]);
@@ -36,7 +37,8 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
         importance: 3,
         urgency: 3,
         project_id: null,
-        area_id: null
+        area_id: null,
+        time_estimate: ''
       });
       setTaskType(null);
 
@@ -72,7 +74,8 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
         start_date: isoStartDate,
         deadline: form.deadline ? new Date(form.deadline).toISOString() : null,
         project_id: taskType === 'project' ? form.project_id : null,
-        area_id: taskType === 'area' ? form.area_id : null
+        area_id: taskType === 'area' ? form.area_id : null,
+        time_estimate: form.time_estimate ? Number(form.time_estimate) : null
       };
       await createTask(payload);
       onClose();
@@ -165,6 +168,17 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               rows={5}
               style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
+            />
+          </div>
+
+          <div>
+            <label>Time Estimate (hours)</label>
+            <input
+              type="number"
+              value={form.time_estimate}
+              onChange={(e) => setForm({ ...form, time_estimate: e.target.value })}
+              placeholder="e.g., 4.5"
+              style={{ width: '100%', padding: '0.5rem' }}
             />
           </div>
 

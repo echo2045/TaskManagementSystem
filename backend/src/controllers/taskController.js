@@ -7,7 +7,7 @@ const getAllTasks = async (req, res) => {
       SELECT
         t.task_id, t.title, t.description, t.deadline,
         t.importance, t.urgency, t.status, t.owner_id,
-        t.start_date, t.created_at,
+        t.start_date, t.created_at, t.time_estimate,
         t.project_id, p.name AS project_name,
         t.area_id, a.name AS area_name,
         u.full_name AS owner_name
@@ -69,7 +69,7 @@ const getArchivedTasksForUser = async (req, res) => {
       SELECT
         t.task_id, t.title, t.description, t.deadline,
         t.importance, t.urgency, t.status, t.owner_id,
-        t.start_date, t.created_at,
+        t.start_date, t.created_at, t.time_estimate,
         t.project_id, t.area_id,
         u.full_name AS owner_name
       FROM tasks t
@@ -129,17 +129,18 @@ const getArchivedTasksForUser = async (req, res) => {
 const createTask = async (req, res) => {
   const {
     title, description, deadline, importance, urgency,
-    owner_id, project_id = null, area_id = null, start_date = null
+    owner_id, project_id = null, area_id = null, start_date = null,
+    time_estimate = null
   } = req.body;
 
   try {
     const normalizedDate = start_date ? new Date(start_date).toISOString().split('T')[0] : null;
 
     const result = await pool.query(`
-      INSERT INTO tasks (title, description, deadline, importance, urgency, owner_id, status, project_id, area_id, start_date)
-      VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9)
+      INSERT INTO tasks (title, description, deadline, importance, urgency, owner_id, status, project_id, area_id, start_date, time_estimate)
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9, $10)
       RETURNING *
-    `, [title, description, deadline, importance, urgency, owner_id, project_id, area_id, normalizedDate]);
+    `, [title, description, deadline, importance, urgency, owner_id, project_id, area_id, normalizedDate, time_estimate]);
 
     res.json(result.rows[0]);
   } catch (err) {
@@ -153,7 +154,8 @@ const updateTask = async (req, res) => {
   const { task_id } = req.params;
   const {
     title, description, deadline, importance, urgency,
-    status, project_id = null, area_id = null, start_date
+    status, project_id = null, area_id = null, start_date,
+    time_estimate
   } = req.body;
 
   try {
@@ -183,12 +185,13 @@ const updateTask = async (req, res) => {
         status = COALESCE($6, status),
         project_id = $7,
         area_id = $8,
-        start_date = COALESCE($9, start_date)
-      WHERE task_id = $10
+        start_date = COALESCE($9, start_date),
+        time_estimate = COALESCE($10, time_estimate)
+      WHERE task_id = $11
       RETURNING *
     `, [
       title, description, deadline, importance, urgency,
-      status, project_id, area_id, normalizedStart, task_id
+      status, project_id, area_id, normalizedStart, time_estimate, task_id
     ]);
 
     res.json(result.rows[0]);
@@ -208,12 +211,12 @@ const updateTaskDetails = async (req, res) => {
     const values = [];
 
     Object.entries(updates).forEach(([key, val], idx) => {
-      fields.push(`${key} = $${idx + 1}`);
+      fields.push(`${key} = ${idx + 1}`);
       values.push(val);
     });
 
     const query = `
-      UPDATE tasks SET ${fields.join(', ')} WHERE task_id = $${values.length + 1}
+      UPDATE tasks SET ${fields.join(', ')} WHERE task_id = ${values.length + 1}
       RETURNING *
     `;
 
@@ -405,6 +408,118 @@ const deleteTask = async (req, res) => {
   }
 };
 
+// POST /api/tasks/:taskId/start
+const startWorkSession = async (req, res) => {
+    const { taskId } = req.params;
+    const { user_id } = req.user;
+
+    try {
+        // End any existing work session for the user, this allows switching tasks
+        await pool.query(
+            `UPDATE work_sessions SET end_time = CURRENT_TIMESTAMP
+             WHERE user_id = $1 AND end_time IS NULL`,
+            [user_id]
+        );
+
+        // Start a new work session
+        const result = await pool.query(
+            `INSERT INTO work_sessions (task_id, user_id, start_time)
+             VALUES ($1, $2, CURRENT_TIMESTAMP)
+             RETURNING *`,
+            [taskId, user_id]
+        );
+
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error('Error starting work session:', err.message);
+        // Use the specific constraint name we created
+        if (err.constraint === 'one_active_session_per_user') {
+            return res.status(409).json({ error: 'A new session could not be started due to a conflict. Please try again.' });
+        }
+        res.status(500).json({ error: 'Failed to start work session.' });
+    }
+};
+
+// POST /api/tasks/stop
+const stopWorkSession = async (req, res) => {
+    const { user_id } = req.user;
+
+    try {
+        const result = await pool.query(
+            `UPDATE work_sessions SET end_time = CURRENT_TIMESTAMP
+             WHERE user_id = $1 AND end_time IS NULL
+             RETURNING *`,
+            [user_id]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'No active work session found to stop.' });
+        }
+
+        res.status(200).json(result.rows[0]);
+    } catch (err) {
+        console.error('Error stopping work session:', err.message);
+        res.status(500).json({ error: 'Failed to stop work session.' });
+    }
+};
+
+// GET /api/users/:userId/work-history
+const getWorkHistory = async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const result = await pool.query(
+            `SELECT
+               ws.session_id,
+               ws.start_time,
+               ws.end_time,
+               t.task_id,
+               t.title,
+               t.time_estimate,
+               EXTRACT(EPOCH FROM (ws.end_time - ws.start_time))/3600 AS hours_spent
+             FROM work_sessions ws
+             JOIN tasks t ON ws.task_id = t.task_id
+             WHERE ws.user_id = $1
+             ORDER BY ws.start_time DESC`,
+            [userId]
+        );
+
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching work history:', err.message);
+        res.status(500).json({ error: 'Failed to fetch work history.' });
+    }
+};
+
+// GET /api/users/:userId/current-task
+const getCurrentTask = async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const result = await pool.query(
+            `SELECT
+                t.task_id,
+                t.title,
+                t.time_estimate,
+                ws.start_time
+             FROM work_sessions ws
+             JOIN tasks t ON ws.task_id = t.task_id
+             WHERE ws.user_id = $1 AND ws.end_time IS NULL`,
+            [userId]
+        );
+
+        if (result.rows.length > 0) {
+            res.json(result.rows[0]);
+        } else {
+            res.json(null); // No active task
+        }
+    } catch (err) {
+        console.error('Error fetching current task:', err.message);
+        res.status(500).json({ error: 'Failed to fetch current task.' });
+    }
+};
+
+
 module.exports = {
   getAllTasks,
   getArchivedTasksForUser,
@@ -414,7 +529,11 @@ module.exports = {
   deleteTask,
   getTaskAssignees,
   assignTask,
-  unassignTask,
+unassignTask,
   markAssignmentCompleted,
-  updateAssignmentStartDate
+  updateAssignmentStartDate,
+  startWorkSession,
+  stopWorkSession,
+  getWorkHistory,
+  getCurrentTask
 };

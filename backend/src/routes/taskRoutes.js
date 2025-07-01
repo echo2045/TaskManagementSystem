@@ -11,7 +11,11 @@ const {
   unassignTask,
   markAssignmentCompleted,
   updateAssignmentStartDate,
-  updateTaskDetails
+  updateTaskDetails,
+  startWorkSession,
+  stopWorkSession,
+  getWorkHistory,
+  getCurrentTask
 } = require('../controllers/taskController');
 const authenticate = require('../middleware/auth');
 
@@ -33,5 +37,11 @@ router.delete('/:task_id/assignees/:userId', unassignTask);
 // Completion + Start date
 router.patch('/:task_id/assignment/:userId/complete', markAssignmentCompleted);
 router.patch('/:task_id/assignment/:userId/start-date', updateAssignmentStartDate);
+
+// Work Sessions
+router.post('/:taskId/start', startWorkSession);
+router.post('/stop', stopWorkSession);
+router.get('/users/:userId/work-history', getWorkHistory);
+router.get('/users/:userId/current-task', getCurrentTask);
 
 module.exports = router;

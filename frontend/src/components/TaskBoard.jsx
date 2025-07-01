@@ -8,6 +8,7 @@ import { getSupervisees } from '../api/users';
 import { AuthContext } from '../AuthContext';
 import { getTaskColor, borderColors, interiorColors } from '../utils/getTaskColor';
 import { FaQuestionCircle } from 'react-icons/fa';
+import UserStatus from './UserStatus';
 
 export default function TaskBoard({ filterUser }) {
   const { user } = useContext(AuthContext);
@@ -131,6 +132,8 @@ export default function TaskBoard({ filterUser }) {
             </button>
           </div>
 
+          <UserStatus userId={user.user_id} />
+
           <CreateTaskModal
             visible={modalOpen}
             onClose={() => { setModalOpen(false); fetchTasks(); }}
@@ -231,3 +234,4 @@ export default function TaskBoard({ filterUser }) {
     </div>
   );
 }
+

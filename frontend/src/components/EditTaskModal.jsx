@@ -13,6 +13,7 @@ export default function EditTaskModal({ task, onClose, onDone }) {
   const [urgency, setUrgency] = useState(task.urgency);
   const [projectId, setProjectId] = useState(task.project_id || '');
   const [areaId, setAreaId] = useState(task.area_id || '');
+  const [timeEstimate, setTimeEstimate] = useState(task.time_estimate || '');
   const [projects, setProjects] = useState([]);
   const [areas, setAreas] = useState([]);
   const [assignees, setAssignees] = useState([]);
@@ -44,7 +45,8 @@ export default function EditTaskModal({ task, onClose, onDone }) {
         importance,
         urgency,
         project_id: projectId || null,
-        area_id: projectId ? null : areaId || null
+        area_id: projectId ? null : areaId || null,
+        time_estimate: timeEstimate ? Number(timeEstimate) : null
       });
       onDone();
     } catch (err) {
@@ -63,6 +65,9 @@ export default function EditTaskModal({ task, onClose, onDone }) {
 
         <label style={label}>Description</label>
         <textarea value={description} onChange={e => setDescription(e.target.value)} style={textarea} />
+
+        <label style={label}>Time Estimate (hours)</label>
+        <input type="number" value={timeEstimate} onChange={e => setTimeEstimate(e.target.value)} style={input} placeholder="e.g., 4.5" />
 
         <div style={row}>
           <div style={{ flex: 1, marginRight: '1rem' }}>
