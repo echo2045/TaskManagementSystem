@@ -45,12 +45,13 @@ export function getAssignees(task_id) {
 }
 
 // ✅ Add assignee with importance, urgency, and start_date
-export function addAssignee(task_id, user_id, importance, urgency, start_date) {
+export function addAssignee(task_id, user_id, importance, urgency, start_date, assigned_time_estimate) {
   return axios.post(`${BASE_URL}/${task_id}/assignees`, {
     user_id,
     importance,
     urgency,
-    start_date: start_date ? new Date(start_date).toISOString() : null
+    start_date: start_date ? new Date(start_date).toISOString() : null,
+    assigned_time_estimate
   });
 }
 

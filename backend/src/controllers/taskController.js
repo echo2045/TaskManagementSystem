@@ -240,6 +240,9 @@ const getTaskAssignees = async (req, res) => {
         ta.urgency,
         ta.is_completed,
         ta.start_date,
+        ta.assigned_time_estimate,
+        ta.total_hours_spent,
+        ta.time_difference,
         d.full_name AS delegated_by
       FROM task_assignments ta
       JOIN users u ON ta.assignee_id = u.user_id
@@ -255,7 +258,10 @@ const getTaskAssignees = async (req, res) => {
       urgency: row.urgency,
       is_completed: row.is_completed,
       delegated_by: row.delegated_by,
-      start_date: row.start_date
+      start_date: row.start_date,
+      assigned_time_estimate: row.assigned_time_estimate,
+      total_hours_spent: row.total_hours_spent,
+      time_difference: row.time_difference
     }));
 
     res.json(formatted);
@@ -268,7 +274,7 @@ const getTaskAssignees = async (req, res) => {
 // POST /api/tasks/:id/assignees
 const assignTask = async (req, res) => {
   const { task_id } = req.params;
-  const { user_id, importance, urgency, start_date } = req.body;
+  const { user_id, importance, urgency, start_date, assigned_time_estimate } = req.body;
   const assigned_by = req.user?.user_id || 1;
 
   try {
@@ -284,9 +290,9 @@ const assignTask = async (req, res) => {
     const normalizedStart = start_date ? new Date(start_date).toISOString().split('T')[0] : null;
 
     await pool.query(`
-      INSERT INTO task_assignments (task_id, assignee_id, assigned_by, importance, urgency, start_date)
-      VALUES ($1, $2, $3, $4, $5, $6)
-    `, [task_id, user_id, assigned_by, importance, urgency, normalizedStart]);
+      INSERT INTO task_assignments (task_id, assignee_id, assigned_by, importance, urgency, start_date, assigned_time_estimate)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [task_id, user_id, assigned_by, importance, urgency, normalizedStart, assigned_time_estimate]);
 
     // Fetch task and user details for the notification message
     const taskInfo = await pool.query('SELECT title FROM tasks WHERE task_id = $1', [task_id]);
@@ -339,11 +345,67 @@ const markAssignmentCompleted = async (req, res) => {
   const { is_completed } = req.body;
 
   try {
-    await pool.query(`
-      UPDATE task_assignments
-      SET is_completed = $1
-      WHERE task_id = $2 AND assignee_id = $3
-    `, [is_completed, task_id, userId]);
+    // Prevent unmarking if already completed
+    if (is_completed === false) {
+      const currentStatus = await pool.query(
+        `SELECT is_completed FROM task_assignments WHERE task_id = $1 AND assignee_id = $2`,
+        [task_id, userId]
+      );
+      if (currentStatus.rows[0]?.is_completed === true) {
+        return res.status(400).json({ error: 'Completed tasks cannot be unmarked.' });
+      }
+    }
+
+    // If marking as completed, calculate total hours spent and difference
+    if (is_completed) {
+      // Stop any active work session for this user on this task
+      await pool.query(
+        `UPDATE work_sessions SET end_time = CURRENT_TIMESTAMP
+         WHERE user_id = $1 AND task_id = $2 AND end_time IS NULL`,
+        [userId, task_id]
+      );
+
+      // Calculate total hours spent on this task by this user
+      const totalHoursResult = await pool.query(
+        `SELECT SUM(EXTRACT(EPOCH FROM (COALESCE(end_time, CURRENT_TIMESTAMP) - start_time))) / 3600 AS total_hours
+         FROM work_sessions
+         WHERE task_id = $1 AND user_id = $2`,
+        [task_id, userId]
+      );
+      const total_hours_spent = totalHoursResult.rows[0].total_hours || 0;
+
+      // Get the assigned time estimate for this assignment or the task's general estimate
+      const estimateResult = await pool.query(
+        `SELECT ta.assigned_time_estimate, t.time_estimate
+         FROM task_assignments ta
+         JOIN tasks t ON ta.task_id = t.task_id
+         WHERE ta.task_id = $1 AND ta.assignee_id = $2`,
+        [task_id, userId]
+      );
+      const assigned_time_estimate = estimateResult.rows[0]?.assigned_time_estimate;
+      const task_time_estimate = estimateResult.rows[0]?.time_estimate;
+
+      const effective_time_estimate = assigned_time_estimate !== null ? assigned_time_estimate : task_time_estimate;
+      const time_difference = effective_time_estimate !== null ? effective_time_estimate - total_hours_spent : null;
+
+      // Update task_assignments with completion status, total hours, and difference
+      await pool.query(
+        `UPDATE task_assignments
+         SET is_completed = $1,
+             total_hours_spent = $2,
+             time_difference = $3
+         WHERE task_id = $4 AND assignee_id = $5`,
+        [is_completed, total_hours_spent, time_difference, task_id, userId]
+      );
+    } else {
+      // If unmarking, just update is_completed (though we're preventing this now)
+      await pool.query(
+        `UPDATE task_assignments
+         SET is_completed = $1
+         WHERE task_id = $2 AND assignee_id = $3`,
+        [is_completed, task_id, userId]
+      );
+    }
 
     res.sendStatus(200);
   } catch (err) {

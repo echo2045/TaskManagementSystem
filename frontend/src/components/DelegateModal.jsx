@@ -90,10 +90,7 @@ export default function DelegateModal({ taskId, onClose }) {
     const { importance, urgency, start_date, time_estimate } = pendingAssign[u.user_id];
     if (!start_date) return alert('Start date required');
     const isoDate = toUtcIsoDate(start_date);
-    await addAssignee(taskId, u.user_id, importance, urgency, isoDate);
-    if (time_estimate) {
-        await updateTask(taskId, { time_estimate: Number(time_estimate) });
-    }
+    await addAssignee(taskId, u.user_id, importance, urgency, isoDate, time_estimate ? Number(time_estimate) : null);
     setPendingAssign(prev => {
       const updated = { ...prev };
       delete updated[u.user_id];

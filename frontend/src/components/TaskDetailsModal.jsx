@@ -16,6 +16,7 @@ export default function TaskDetailsModal({
   const isOwner = user.user_id === task.owner_id;
   const [taskState, setTaskState] = useState(task);
   const [assignees, setAssignees] = useState([]);
+  const assigneeEntry = assignees.find(a => a.user_id === user.user_id);
   const [showDelegate, setShowDelegate] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [totalHoursSpent, setTotalHoursSpent] = useState(0);
@@ -30,7 +31,7 @@ export default function TaskDetailsModal({
       try {
         const history = await getWorkHistory(user.user_id);
         const taskSessions = history.filter(session => session.task_id === taskState.task_id);
-        const total = taskSessions.reduce((sum, session) => sum + (session.hours_spent || 0), 0);
+        const total = taskSessions.reduce((sum, session) => sum + (parseFloat(session.hours_spent) || 0), 0);
         setTotalHoursSpent(total);
       } catch (error) {
         console.error("Error fetching total hours spent:", error);
@@ -70,7 +71,23 @@ export default function TaskDetailsModal({
     }
   }
 
-  const timeDifference = taskState.time_estimate !== null ? (taskState.time_estimate - totalHoursSpent).toFixed(2) : 'N/A';
+  const timeDifference = (
+    (type === 'delegate' && assigneeEntry && assigneeEntry.assigned_time_estimate !== null)
+      ? (assigneeEntry.assigned_time_estimate - (parseFloat(assigneeEntry.total_hours_spent) || 0)).toFixed(2)
+      : (taskState.time_estimate !== null ? (taskState.time_estimate - totalHoursSpent).toFixed(2) : 'N/A')
+  );
+
+  const effectiveTimeEstimate = (
+    (type === 'delegate' && assigneeEntry && assigneeEntry.assigned_time_estimate !== null)
+      ? assigneeEntry.assigned_time_estimate
+      : taskState.time_estimate
+  );
+
+  const effectiveTotalHoursSpent = (
+    (type === 'delegate' && assigneeEntry && assigneeEntry.total_hours_spent !== null)
+      ? parseFloat(assigneeEntry.total_hours_spent)
+      : totalHoursSpent
+  );
 
   return (
     <div style={overlay}>
@@ -102,15 +119,17 @@ export default function TaskDetailsModal({
         <p style={{ margin: '0.5rem 0' }}>
           <strong>Start Date:</strong> {taskState.start_date ? new Date(taskState.start_date).toLocaleDateString('en-CA') : '—'}
         </p>
-        {taskState.time_estimate !== null && (
+        {effectiveTimeEstimate !== null && (
           <p style={{ margin: '0.5rem 0' }}>
-            <strong>Estimated Time:</strong> {taskState.time_estimate} hours
+            <strong>Estimated Time:</strong> {effectiveTimeEstimate} hours
           </p>
         )}
-        <p style={{ margin: '0.5rem 0' }}>
-          <strong>Total Hours Spent:</strong> {totalHoursSpent.toFixed(2)} hours
-        </p>
-        {taskState.time_estimate !== null && (
+        {(taskState.status === 'completed' || (type === 'delegate' && assigneeEntry?.is_completed)) && (
+          <p style={{ margin: '0.5rem 0' }}>
+            <strong>Total Hours Spent:</strong> {effectiveTotalHoursSpent.toFixed(2)} hours
+          </p>
+        )}
+        {(taskState.status === 'completed' || (type === 'delegate' && assigneeEntry?.is_completed)) && effectiveTimeEstimate !== null && (
           <p style={{ margin: '0.5rem 0' }}>
             <strong>Time Difference (Est - Spent):</strong> {timeDifference} hours
           </p>

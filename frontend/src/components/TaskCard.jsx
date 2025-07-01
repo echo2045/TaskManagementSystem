@@ -84,15 +84,25 @@ export default function TaskCard({
   const canOwnerToggleArchive = isArchived && isAuthOwner && viewingUserId === authUser.user_id && task.status !== 'completed';
   const canAssigneeToggle = !isArchived && viewIsAssignee && authUser.user_id === viewingUserId;
 
-  const handleComplete = e => {
+  const handleComplete = async e => {
     e.stopPropagation();
     const checked = e.target.checked;
 
     if (checked) {
+      // If marking as complete, stop work session if active on this task
+      if (isWorkingOnThisTask) {
+        await stopWorkSession();
+        const activeTask = await getCurrentTask(authUser.user_id);
+        setCurrentActiveTask(activeTask);
+      }
       setCompletionState({ checked });
       setIsConfirmModalVisible(true);
     } else {
-      // Unchecking does not require confirmation
+      // Unchecking does not require confirmation, but assigned tasks cannot be unmarked
+      if (viewIsAssignee && assigneeEntry?.is_completed) {
+        alert('Completed assigned tasks cannot be unmarked.');
+        return;
+      }
       proceedWithCompletion(false);
     }
   };
@@ -244,7 +254,7 @@ export default function TaskCard({
               checked={isCompleted}
               onChange={handleComplete}
               onClick={(e) => e.stopPropagation()}
-              disabled={!(canOwnerToggleActive || canOwnerToggleArchive || canAssigneeToggle)}
+              disabled={!(canOwnerToggleActive || canOwnerToggleArchive || canAssigneeToggle) || (viewIsAssignee && assigneeEntry?.is_completed)}
               className="task-checkbox"
               title="Mark task as complete"
             />
@@ -299,7 +309,7 @@ export default function TaskCard({
                 getStartDate()
               )}
             </span>
-            {task.time_estimate && (
+            {((viewIsAssignee && assigneeEntry?.assigned_time_estimate) || task.time_estimate) && (
               <span style={{
                 fontSize: '1rem',
                 color: '#555',
@@ -308,7 +318,19 @@ export default function TaskCard({
                 textOverflow: 'ellipsis',
                 width: '135px'
               }}>
-                Est: {task.time_estimate}h
+                Est: {viewIsAssignee && assigneeEntry?.assigned_time_estimate ? assigneeEntry.assigned_time_estimate : task.time_estimate}h
+              </span>
+            )}
+            {isCompleted && viewIsAssignee && assigneeEntry?.time_difference !== undefined && (
+              <span style={{
+                fontSize: '1rem',
+                color: assigneeEntry.time_difference >= 0 ? 'green' : 'red',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                width: '135px'
+              }}>
+                Diff: {assigneeEntry.time_difference}h
               </span>
             )}
             {extraName && (
@@ -347,7 +369,7 @@ export default function TaskCard({
           justifyContent: 'flex-end',
           flex: 2
         }}>
-          {viewIsAssignee && authUser.user_id === viewingUserId && !isArchived && (
+          {(isAuthOwner || viewIsAssignee) && authUser.user_id === viewingUserId && !isArchived && !isCompleted && (
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               {!isWorkingOnThisTask && (
                 <button
