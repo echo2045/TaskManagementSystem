@@ -1,7 +1,6 @@
 // src/components/PeopleList.jsx
 import React, { useEffect, useState } from 'react';
 import { getUsers } from '../api/users';
-import UserStatus from './UserStatus';
 
 export default function PeopleList({
   currentUserId,
@@ -80,7 +79,6 @@ export default function PeopleList({
             }}
           >
             {u.full_name}
-            <UserStatus userId={u.user_id} />
           </div>
         ))}
       </div>

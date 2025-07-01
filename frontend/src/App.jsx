@@ -1,4 +1,3 @@
-// src/App.jsx
 import React, { useContext, useState } from 'react';
 import { AuthContext } from './AuthContext';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
@@ -14,6 +13,7 @@ import Projects from './components/Projects';
 import Areas from './components/Areas';
 import DeleteUser from './components/DeleteUser';
 import UpdateUser from './components/UpdateUser';
+import UserStatus from './components/UserStatus';
 
 export default function App() {
   const { user, logout } = useContext(AuthContext);
@@ -45,7 +45,7 @@ export default function App() {
     { key: 'areas', label: 'Areas' },
     ...(user.role === 'manager' || user.role === 'hr'
       ? [
-          { key: 'allocate', label: 'Allocate Team' }, // changed from "Allocate Supervisor"
+          { key: 'allocate', label: 'Allocate Team' },
           { key: 'addUser', label: 'Add User' },
           { key: 'deleteUser', label: 'Delete User' }
         ]
@@ -114,7 +114,12 @@ export default function App() {
       </nav>
 
       {/* BODY */}
-      <div style={{ display: 'flex', flex: 1, position: 'relative', overflow: 'hidden' }}>
+      <div style={{
+        display: 'flex',
+        flex: 1,
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
         {/* PeopleList Drawer */}
         <div style={{
           position: 'absolute',
@@ -182,6 +187,7 @@ export default function App() {
             boxSizing: 'border-box',
             height: '100%'
           }}>
+            <UserStatus userId={user.user_id} />
             {renderMain()}
           </main>
 
