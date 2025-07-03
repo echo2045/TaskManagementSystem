@@ -1,8 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
+import { AuthContext } from '../AuthContext';
 import { getTaskColor, borderColors, interiorColors } from '../utils/getTaskColor';
 import TaskSessionDetailsModal from './TaskSessionDetailsModal';
 
-export default function WeekScheduleView({ sessions, selectedDate, allTasks }) {
+export default function WeekScheduleView({ sessions, selectedDate, allTasks, users, viewingUserId }) {
+    const { user: authUser } = useContext(AuthContext);
     const HOUR_HEIGHT = 60; // Height of one hour in pixels
 
     const hours = Array.from({ length: 24 }, (_, i) => i);
@@ -12,6 +14,7 @@ export default function WeekScheduleView({ sessions, selectedDate, allTasks }) {
     const timeColumnInnerRef = useRef(null); // Ref for the inner time column
 
     const getTaskDetails = (taskId) => allTasks.find(task => task.task_id === taskId);
+    const getUserDetails = (userId) => users.find(user => user.user_id === userId);
 
     const getSessionsForDay = (dayIndex) => {
         const startOfWeek = new Date(selectedDate);
@@ -74,6 +77,8 @@ export default function WeekScheduleView({ sessions, selectedDate, allTasks }) {
                                     const task = getTaskDetails(session.task_id);
                                     if (!task) return null;
 
+                                    const owner = task.owner_id ? getUserDetails(task.owner_id) : null;
+
                                     const sessionStart = new Date(session.start_time);
                                     const sessionEnd = session.end_time ? new Date(session.end_time) : new Date();
 
@@ -100,9 +105,15 @@ export default function WeekScheduleView({ sessions, selectedDate, allTasks }) {
 
                                     if (height <= 0) return null;
 
-                                    const taskColorType = getTaskColor(task.importance, task.urgency);
-                                    const backgroundColor = interiorColors[taskColorType];
-                                    const borderColor = borderColors[taskColorType];
+                                    const viewIsAssignee = task.assignees && task.assignees.some(a => a.user_id === viewingUserId);
+                                    const assigneeEntry = viewIsAssignee ? task.assignees.find(a => a.user_id === viewingUserId) : null;
+
+                                    const colorType = viewIsAssignee && assigneeEntry
+                                        ? getTaskColor(assigneeEntry.importance, assigneeEntry.urgency)
+                                        : getTaskColor(task.importance, task.urgency);
+
+                                    const backgroundColor = interiorColors[colorType];
+                                    const borderColor = borderColors[colorType];
 
                                     return (
                                         <div
@@ -114,7 +125,7 @@ export default function WeekScheduleView({ sessions, selectedDate, allTasks }) {
                                                 backgroundColor: backgroundColor,
                                                 border: `1px solid ${borderColor}`,
                                             }}
-                                            onClick={() => setSelectedSession({ session, task })}
+                                            onClick={() => setSelectedSession({ session, task, owner })}
                                         >
                                             {task.title}
                                         </div>
@@ -129,6 +140,7 @@ export default function WeekScheduleView({ sessions, selectedDate, allTasks }) {
                 <TaskSessionDetailsModal
                     session={selectedSession.session}
                     task={selectedSession.task}
+                    owner={selectedSession.owner}
                     onClose={() => setSelectedSession(null)}
                 />
             )}

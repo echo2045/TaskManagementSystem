@@ -1,7 +1,7 @@
 import React from 'react';
 import { getTaskColor, borderColors, interiorColors } from '../utils/getTaskColor';
 
-export default function TaskSessionDetailsModal({ session, task, onClose }) {
+export default function TaskSessionDetailsModal({ session, task, owner, onClose }) {
     const sessionStart = new Date(session.start_time);
     const sessionEnd = session.end_time ? new Date(session.end_time) : null;
 
@@ -37,6 +37,7 @@ export default function TaskSessionDetailsModal({ session, task, onClose }) {
             <div style={{ ...modal, background: backgroundColor, border: `2px solid ${borderColor}` }}>
                 <button onClick={onClose} style={closeBtn}>×</button>
                 <h2>{task.title}</h2>
+                {owner && <p><strong>Task Owner:</strong> {owner.username}</p>}
                 <p><strong>Start Time:</strong> {sessionStart.toLocaleString()}</p>
                 <p><strong>End Time:</strong> {sessionEnd ? sessionEnd.toLocaleString() : 'In Progress'}</p>
                 <p><strong>Session Duration:</strong> {sessionDuration} hours</p>

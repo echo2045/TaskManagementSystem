@@ -1,8 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
+import { AuthContext } from '../AuthContext';
 import { getTaskColor, borderColors, interiorColors } from '../utils/getTaskColor';
 import TaskSessionDetailsModal from './TaskSessionDetailsModal';
 
-export default function DayScheduleView({ sessions, selectedDate, allTasks }) {
+export default function DayScheduleView({ sessions, selectedDate, allTasks, users, viewingUserId }) {
+    const { user: authUser } = useContext(AuthContext);
     const HOUR_HEIGHT = 60; // Height of one hour in pixels
 
     const hours = Array.from({ length: 24 }, (_, i) => i);
@@ -11,6 +13,7 @@ export default function DayScheduleView({ sessions, selectedDate, allTasks }) {
     const timeColumnRef = useRef(null);
 
     const getTaskDetails = (taskId) => allTasks.find(task => task.task_id === taskId);
+    const getUserDetails = (userId) => users.find(user => user.user_id === userId);
 
     const sessionsForDay = sessions.filter(session => {
         const sessionStart = new Date(session.start_time);
@@ -64,9 +67,17 @@ export default function DayScheduleView({ sessions, selectedDate, allTasks }) {
                         const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
                         const height = durationMinutes / 60 * HOUR_HEIGHT; // Pixels
 
-                        const taskColorType = getTaskColor(task.importance, task.urgency);
-                        const backgroundColor = interiorColors[taskColorType];
-                        const borderColor = borderColors[taskColorType];
+                        const viewIsAssignee = task.assignees && task.assignees.some(a => a.user_id === viewingUserId);
+                        const assigneeEntry = viewIsAssignee ? task.assignees.find(a => a.user_id === viewingUserId) : null;
+
+                        const colorType = viewIsAssignee && assigneeEntry
+                            ? getTaskColor(assigneeEntry.importance, assigneeEntry.urgency)
+                            : getTaskColor(task.importance, task.urgency);
+
+                        const backgroundColor = interiorColors[colorType];
+                        const borderColor = borderColors[colorType];
+
+                        const owner = task.owner_id ? getUserDetails(task.owner_id) : null;
 
                         return (
                             <div
@@ -78,7 +89,7 @@ export default function DayScheduleView({ sessions, selectedDate, allTasks }) {
                                     backgroundColor: backgroundColor,
                                     border: `1px solid ${borderColor}`,
                                 }}
-                                onClick={() => setSelectedSession({ session, task })}
+                                onClick={() => setSelectedSession({ session, task, owner })}
                             >
                                 {task.title}
                             </div>
@@ -90,6 +101,7 @@ export default function DayScheduleView({ sessions, selectedDate, allTasks }) {
                 <TaskSessionDetailsModal
                     session={selectedSession.session}
                     task={selectedSession.task}
+                    owner={selectedSession.owner}
                     onClose={() => setSelectedSession(null)}
                 />
             )}

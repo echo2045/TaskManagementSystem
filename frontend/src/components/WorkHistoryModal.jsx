@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getWorkHistory, getTasksForUser } from '../api/tasks';
+import { getUsers } from '../api/users';
 import { getTaskColor } from '../utils/getTaskColor';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import DayScheduleView from './DayScheduleView';
@@ -8,6 +9,7 @@ import WeekScheduleView from './WeekScheduleView';
 export default function WorkHistoryModal({ userId, onClose }) {
     const [workSessions, setWorkSessions] = useState([]);
     const [allTasks, setAllTasks] = useState([]);
+    const [users, setUsers] = useState([]);
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [currentView, setCurrentView] = useState('day'); // 'day' or 'week'
     const [taskTypeFilter, setTaskTypeFilter] = useState('');
@@ -19,6 +21,8 @@ export default function WorkHistoryModal({ userId, onClose }) {
             setWorkSessions(history);
             const tasks = await getTasksForUser(); // Fetch all tasks to get their details
             setAllTasks(tasks);
+            const userList = await getUsers();
+            setUsers(userList);
         } catch (error) {
             console.error("Error fetching work history or tasks:", error);
         }
@@ -169,12 +173,16 @@ export default function WorkHistoryModal({ userId, onClose }) {
                             sessions={getFilteredSessions()}
                             selectedDate={selectedDate}
                             allTasks={allTasks}
+                            users={users}
+                            viewingUserId={userId}
                         />
                     ) : (
                         <WeekScheduleView
                             sessions={getFilteredSessions()}
                             selectedDate={selectedDate}
                             allTasks={allTasks}
+                            users={users}
+                            viewingUserId={userId}
                         />
                     )}
                 </div>
