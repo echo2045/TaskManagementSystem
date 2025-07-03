@@ -105,10 +105,12 @@ export default function WeekScheduleView({ sessions, selectedDate, allTasks, use
 
                                     if (height <= 0) return null;
 
-                                    const viewIsAssignee = task.assignees && task.assignees.some(a => a.user_id === viewingUserId);
-                                    const assigneeEntry = viewIsAssignee ? task.assignees.find(a => a.user_id === viewingUserId) : null;
+                                    const sessionUserIsAssignee = task.assignees && task.assignees.some(a => a.user_id == session.user_id);
+                                    const assigneeEntry = sessionUserIsAssignee
+                                        ? task.assignees.find(a => a.user_id == session.user_id)
+                                        : null;
 
-                                    const colorType = viewIsAssignee && assigneeEntry
+                                    const colorType = sessionUserIsAssignee && assigneeEntry
                                         ? getTaskColor(assigneeEntry.importance, assigneeEntry.urgency)
                                         : getTaskColor(task.importance, task.urgency);
 

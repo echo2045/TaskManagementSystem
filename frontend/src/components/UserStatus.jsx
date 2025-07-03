@@ -1,9 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { getCurrentTask, getWorkHistory } from '../api/tasks';
 import { getSupervisees } from '../api/users';
 import WorkHistoryModal from './WorkHistoryModal';
+import { useSocket } from '../SocketContext'; // Import useSocket
+import { AuthContext } from '../AuthContext'; // Import AuthContext
 
 export default function UserStatus({ selectedUser, currentUser }) {
+    const { user: authUser } = useContext(AuthContext);
+    const socket = useSocket();
     const [currentTask, setCurrentTask] = useState(null);
     const [workHistory, setWorkHistory] = useState([]);
     const [isHistoryVisible, setHistoryVisible] = useState(false);
@@ -11,6 +15,7 @@ export default function UserStatus({ selectedUser, currentUser }) {
     const [hasAccess, setHasAccess] = useState(true);
     const [displayUserId, setDisplayUserId] = useState(currentUser.user_id);
     const [historyView, setHistoryView] = useState('day'); // State to control the view in WorkHistoryModal
+    const [initialHistoryDate, setInitialHistoryDate] = useState(new Date()); // State to control the initial date for WorkHistoryModal
 
     useEffect(() => {
         const checkAccess = async () => {
@@ -63,7 +68,9 @@ export default function UserStatus({ selectedUser, currentUser }) {
         }
         try {
             setIsLoading(true);
+            console.log(`UserStatus: Fetching current task for displayUserId: ${displayUserId}`);
             const task = await getCurrentTask(displayUserId);
+            console.log('UserStatus: Received current task:', task);
             setCurrentTask(task);
         } catch (error) {
             console.error("Error fetching user status:", error);
@@ -74,16 +81,51 @@ export default function UserStatus({ selectedUser, currentUser }) {
 
     useEffect(() => {
         fetchStatus();
-        // The polling interval is removed as real-time updates will be handled by WebSockets.
-        // const interval = setInterval(fetchStatus, 30000); // Refresh every 30 seconds
-        // return () => clearInterval(interval);
     }, [fetchStatus]);
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleWorkSessionUpdate = ({ userId }) => {
+            console.log(`UserStatus: Received workSessionUpdate for userId: ${userId}, current displayUserId: ${displayUserId}`);
+            if (userId === displayUserId) {
+                fetchStatus();
+            }
+        };
+
+        socket.on('workSessionUpdate', handleWorkSessionUpdate);
+
+        return () => {
+            socket.off('workSessionUpdate', handleWorkSessionUpdate);
+        };
+    }, [socket, displayUserId, fetchStatus]);
 
     const handleShowHistory = async () => {
         if (!hasAccess || !displayUserId) return;
         try {
+            console.log(`UserStatus: Fetching work history for displayUserId: ${displayUserId}`);
             const history = await getWorkHistory(displayUserId);
+            console.log('UserStatus: Received work history:', history);
             setWorkHistory(history);
+            let calculatedInitialHistoryDate;
+            try {
+                if (currentTask && typeof currentTask.start_time === 'string' && currentTask.start_time.length > 0) {
+                    // Attempt to parse as UTC by replacing space with 'T' and appending 'Z'
+                    calculatedInitialHistoryDate = new Date(currentTask.start_time.replace(' ', 'T') + 'Z');
+                    // Validate if the date is actually valid after parsing
+                    if (isNaN(calculatedInitialHistoryDate.getTime())) {
+                        throw new RangeError("Invalid Date after parsing");
+                    }
+                } else {
+                    calculatedInitialHistoryDate = new Date();
+                }
+            } catch (error) {
+                console.error('UserStatus: Error parsing currentTask.start_time:', currentTask?.start_time, 'Error:', error);
+                calculatedInitialHistoryDate = new Date(); // Fallback to current date to prevent crash
+            }
+            console.log('UserStatus: currentTask.start_time:', currentTask?.start_time);
+            console.log('UserStatus: Calculated initialHistoryDate:', calculatedInitialHistoryDate);
+            setInitialHistoryDate(calculatedInitialHistoryDate);
             setHistoryVisible(true);
         } catch (error) {
             console.error("Error fetching work history:", error);
@@ -122,6 +164,7 @@ export default function UserStatus({ selectedUser, currentUser }) {
                     onClose={() => setHistoryVisible(false)}
                     currentView={historyView}
                     onCurrentViewChange={setHistoryView}
+                    initialHistoryDate={initialHistoryDate}
                 />
             )}
         </div>

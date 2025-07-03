@@ -405,7 +405,12 @@ export default function TaskCard({
           justifyContent: 'flex-end',
           flex: 2
         }}>
-          {(isAuthOwner || viewIsAssignee) && authUser.user_id === viewingUserId && !isArchived && !isCompleted && (
+          {((!isArchived && !isCompleted) || (isArchived && archiveBadge?.text === 'Incomplete')) && (isAuthOwner || viewIsAssignee) && authUser.user_id === viewingUserId && (
+            // Show work buttons if not completed, regardless of archive status
+            // The `isArchived` prop is used to determine if the task is in the archive view,
+            // but we still want to allow working on incomplete archived tasks.
+            // The `wasExpired` prop indicates if it's an expired task in archive.
+            // We only hide the buttons if the task is completed.
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               {!isWorkingOnThisTask && (
                 <button

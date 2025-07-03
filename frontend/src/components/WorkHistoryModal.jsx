@@ -1,16 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getWorkHistory, getTasksForUser } from '../api/tasks';
+import { getWorkHistory, getTasksForUser, getArchivedTasksForUser } from '../api/tasks';
 import { getUsers } from '../api/users';
 import { getTaskColor } from '../utils/getTaskColor';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import DayScheduleView from './DayScheduleView';
 import WeekScheduleView from './WeekScheduleView';
 
-export default function WorkHistoryModal({ userId, onClose, currentView, onCurrentViewChange }) {
+export default function WorkHistoryModal({ userId, onClose, currentView, onCurrentViewChange, initialHistoryDate }) {
     const [workSessions, setWorkSessions] = useState([]);
     const [allTasks, setAllTasks] = useState([]);
     const [users, setUsers] = useState([]);
-    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState(
+        initialHistoryDate && !isNaN(initialHistoryDate.getTime())
+            ? initialHistoryDate
+            : new Date()
+    );
+    console.log('WorkHistoryModal: Initial selectedDate from prop:', initialHistoryDate);
+    console.log('WorkHistoryModal: selectedDate state after useState:', selectedDate);
     const [taskTypeFilter, setTaskTypeFilter] = useState('');
     const [taskStatusFilter, setTaskStatusFilter] = useState('all'); // 'all', 'pending', 'completed', 'late', 'incomplete'
 
@@ -18,8 +24,18 @@ export default function WorkHistoryModal({ userId, onClose, currentView, onCurre
         try {
             const history = await getWorkHistory(userId);
             setWorkSessions(history);
-            const tasks = await getTasksForUser(); // Fetch all tasks to get their details
-            setAllTasks(tasks);
+            console.log('WorkHistoryModal: Fetched work history:', history);
+            
+            // Fetch both active and archived tasks and combine them
+            const activeTasks = await getTasksForUser();
+            const archivedTasks = await getArchivedTasksForUser(userId);
+            
+            // Combine and create a unique list of tasks
+            const combinedTasks = [...activeTasks, ...archivedTasks];
+            const uniqueTasks = Array.from(new Map(combinedTasks.map(task => [task.task_id, task])).values());
+            
+            setAllTasks(uniqueTasks);
+            
             const userList = await getUsers();
             setUsers(userList);
         } catch (error) {
@@ -33,26 +49,51 @@ export default function WorkHistoryModal({ userId, onClose, currentView, onCurre
         }
     }, [fetchWorkData, userId]);
 
-    const getFilteredSessions = () => {
-        let filtered = workSessions;
+    useEffect(() => {
+        setSelectedDate(initialHistoryDate);
+    }, [initialHistoryDate]);
+
+    const filteredSessions = React.useMemo(() => {
+            console.log('WorkHistoryModal: selectedDate in useMemo:', selectedDate);
+            if (isNaN(selectedDate.getTime())) {
+                console.error('WorkHistoryModal: Invalid selectedDate received in useMemo:', selectedDate);
+                return []; // Return empty array if selectedDate is invalid
+            }
+            let filtered = workSessions;
+        console.log('WorkHistoryModal: Filtering sessions. Total sessions:', workSessions.length);
+        console.log('WorkHistoryModal: Selected Date:', selectedDate.toDateString());
 
         // Filter by date
         if (currentView === 'day') {
+            const selectedDateUTCString = selectedDate.toISOString().split('T')[0];
             filtered = filtered.filter(session => {
+                if (!session.start_time) {
+                    console.error('WorkHistoryModal: Session has no start_time:', session);
+                    return false; // Skip sessions without a start_time
+                }
                 const sessionDate = new Date(session.start_time);
-                return sessionDate.toDateString() === selectedDate.toDateString();
+                if (isNaN(sessionDate.getTime())) {
+                    console.error('WorkHistoryModal: Invalid Date for session', session.session_id, 'start_time:', session.start_time);
+                    return false; // Skip invalid dates
+                }
+                const sessionDateUTCString = sessionDate.toISOString().split('T')[0];
+                const isMatch = (sessionDateUTCString === selectedDateUTCString);
+                console.log(`Comparing Day (UTC String): Session ${session.session_id} (${sessionDateUTCString}) with Selected (${selectedDateUTCString}). Match: ${isMatch}`);
+                return isMatch;
             });
         } else { // week view
             const startOfWeek = new Date(selectedDate);
-            startOfWeek.setDate(selectedDate.getDate() - selectedDate.getDay()); // Sunday
-            startOfWeek.setHours(0, 0, 0, 0);
+            startOfWeek.setUTCHours(0, 0, 0, 0);
+            startOfWeek.setUTCDate(startOfWeek.getUTCDate() - startOfWeek.getUTCDay()); // Go to Sunday (UTC)
 
             const endOfWeek = new Date(startOfWeek);
-            endOfWeek.setDate(startOfWeek.getDate() + 7); // Next Sunday
+            endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 7);
 
             filtered = filtered.filter(session => {
-                const sessionDate = new Date(session.start_time);
-                return sessionDate >= startOfWeek && sessionDate < endOfWeek;
+                const sessionDate = new Date(session.start_time); // Keep full time for range check
+                const isMatch = (sessionDate.getTime() >= startOfWeek.getTime() && sessionDate.getTime() < endOfWeek.getTime());
+                console.log(`Comparing Week (UTC Range): Session ${session.session_id} (${sessionDate.toISOString()}) between ${startOfWeek.toISOString()} and ${endOfWeek.toISOString()}. Match: ${isMatch}`);
+                return isMatch;
             });
         }
 
@@ -88,7 +129,7 @@ export default function WorkHistoryModal({ userId, onClose, currentView, onCurre
         }
 
         return filtered;
-    };
+    }, [workSessions, selectedDate, currentView, taskTypeFilter, taskStatusFilter, allTasks]);
 
     const navigateDate = (direction) => {
         const newDate = new Date(selectedDate);
@@ -169,7 +210,7 @@ export default function WorkHistoryModal({ userId, onClose, currentView, onCurre
                 <div style={scheduleContainer}>
                     {currentView === 'day' ? (
                         <DayScheduleView
-                            sessions={getFilteredSessions()}
+                            sessions={filteredSessions}
                             selectedDate={selectedDate}
                             allTasks={allTasks}
                             users={users}
@@ -177,7 +218,7 @@ export default function WorkHistoryModal({ userId, onClose, currentView, onCurre
                         />
                     ) : (
                         <WeekScheduleView
-                            sessions={getFilteredSessions()}
+                            sessions={filteredSessions}
                             selectedDate={selectedDate}
                             allTasks={allTasks}
                             users={users}

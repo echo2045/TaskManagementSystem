@@ -67,10 +67,12 @@ export default function DayScheduleView({ sessions, selectedDate, allTasks, user
                         const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
                         const height = durationMinutes / 60 * HOUR_HEIGHT; // Pixels
 
-                        const viewIsAssignee = task.assignees && task.assignees.some(a => a.user_id === viewingUserId);
-                        const assigneeEntry = viewIsAssignee ? task.assignees.find(a => a.user_id === viewingUserId) : null;
+                        const sessionUserIsAssignee = task.assignees && task.assignees.some(a => a.user_id == session.user_id);
+                        const assigneeEntry = sessionUserIsAssignee
+                            ? task.assignees.find(a => a.user_id == session.user_id)
+                            : null;
 
-                        const colorType = viewIsAssignee && assigneeEntry
+                        const colorType = sessionUserIsAssignee && assigneeEntry
                             ? getTaskColor(assigneeEntry.importance, assigneeEntry.urgency)
                             : getTaskColor(task.importance, task.urgency);
 
