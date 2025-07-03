@@ -8,6 +8,7 @@ export default function DayScheduleView({ sessions, selectedDate, allTasks }) {
     const hours = Array.from({ length: 24 }, (_, i) => i);
     const [selectedSession, setSelectedSession] = useState(null);
     const scheduleRef = useRef(null);
+    const timeColumnRef = useRef(null);
 
     const getTaskDetails = (taskId) => allTasks.find(task => task.task_id === taskId);
 
@@ -23,9 +24,15 @@ export default function DayScheduleView({ sessions, selectedDate, allTasks }) {
         }
     }, [selectedDate]);
 
+    const handleScheduleScroll = () => {
+        if (scheduleRef.current && timeColumnRef.current) {
+            timeColumnRef.current.scrollTop = scheduleRef.current.scrollTop;
+        }
+    };
+
     return (
         <div style={dayScheduleContainer}>
-            <div style={{ ...timeColumn, height: HOUR_HEIGHT * 6, overflowY: 'hidden' }}>
+            <div style={{ ...timeColumn, height: HOUR_HEIGHT * 6, overflowY: 'hidden' }} ref={timeColumnRef}>
                 <div style={{ height: HOUR_HEIGHT * 24 }}>
                     {hours.map(hour => (
                         <div key={hour} style={{ ...hourLabel, height: HOUR_HEIGHT }}>
@@ -34,7 +41,7 @@ export default function DayScheduleView({ sessions, selectedDate, allTasks }) {
                     ))}
                 </div>
             </div>
-            <div style={{ ...scheduleColumn, height: HOUR_HEIGHT * 6, overflowY: 'scroll' }} ref={scheduleRef}>
+            <div style={{ ...scheduleColumn, height: HOUR_HEIGHT * 6, overflowY: 'scroll' }} ref={scheduleRef} onScroll={handleScheduleScroll}>
                 <div style={{ height: HOUR_HEIGHT * 24, position: 'relative' }}>
                     {hours.map(hour => (
                         <div key={hour} style={{ ...hourSlot, height: HOUR_HEIGHT }}>

@@ -8,7 +8,8 @@ export default function WeekScheduleView({ sessions, selectedDate, allTasks }) {
     const hours = Array.from({ length: 24 }, (_, i) => i);
     const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const [selectedSession, setSelectedSession] = useState(null);
-    const scheduleRefs = useRef([]);
+    const weekScheduleRef = useRef(null); // Ref for the main scrollable area
+    const timeColumnInnerRef = useRef(null); // Ref for the inner time column
 
     const getTaskDetails = (taskId) => allTasks.find(task => task.task_id === taskId);
 
@@ -27,36 +28,38 @@ export default function WeekScheduleView({ sessions, selectedDate, allTasks }) {
     };
 
     useEffect(() => {
-        // Scroll all schedule columns to 9 AM
-        scheduleRefs.current.forEach(ref => {
-            if (ref) {
-                ref.scrollTop = HOUR_HEIGHT * 9;
-            }
-        });
+        if (weekScheduleRef.current) {
+            // Scroll to 9 AM
+            weekScheduleRef.current.scrollTop = HOUR_HEIGHT * 9;
+        }
     }, [selectedDate]);
+
+    const handleWeekScheduleScroll = () => {
+        if (weekScheduleRef.current && timeColumnInnerRef.current) {
+            timeColumnInnerRef.current.scrollTop = weekScheduleRef.current.scrollTop;
+        }
+    };
 
     return (
         <div style={weekScheduleContainer}>
-            <div style={weekHeaderRow}>
-                <div style={timeColumnHeader}></div> {/* Empty div for alignment with time column */}
+            <div style={{ ...weekHeaderRow, display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)' }}>
+                <div></div> {/* Empty div for alignment with time column */}
                 {daysOfWeek.map((dayName, dayIndex) => (
                     <div key={dayIndex} style={dayHeader}>{dayName}</div>
                 ))}
             </div>
-            <div style={weekContentRow}>
-                <div style={{ ...timeColumn, height: HOUR_HEIGHT * 6, overflowY: 'hidden' }}>
-                    <div style={{ height: HOUR_HEIGHT * 24 }}>
+            <div style={{ ...weekContentRow, height: HOUR_HEIGHT * 6, overflowY: 'scroll' }} ref={weekScheduleRef} onScroll={handleWeekScheduleScroll}> {/* Main scrollable area */}
+                <div style={{ display: 'flex', width: '100%' }}>
+                    <div style={{ ...timeColumn, height: HOUR_HEIGHT * 24 }} ref={timeColumnInnerRef}> {/* Inner div for time labels */}
                         {hours.map(hour => (
                             <div key={hour} style={{ ...hourLabel, height: HOUR_HEIGHT }}>
                                 {hour === 0 ? '12 AM' : hour === 12 ? '12 PM' : hour < 12 ? `${hour} AM` : `${hour - 12} PM`}
                             </div>
                         ))}
                     </div>
-                </div>
-                {daysOfWeek.map((dayName, dayIndex) => (
-                    <div key={dayIndex} style={dayColumn}>
-                        <div style={{ ...scheduleColumn, height: HOUR_HEIGHT * 6, overflowY: 'scroll' }} ref={el => scheduleRefs.current[dayIndex] = el}>
-                            <div style={{ height: HOUR_HEIGHT * 24, position: 'relative' }}>
+                    {daysOfWeek.map((dayName, dayIndex) => (
+                        <div key={dayIndex} style={dayColumn}>
+                            <div style={{ ...scheduleColumn, height: HOUR_HEIGHT * 24, overflowY: 'hidden' }}> {/* Individual day content */}
                                 {hours.map(hour => (
                                     <div key={hour} style={{ ...hourSlot, height: HOUR_HEIGHT }}>
                                         <div style={halfHourLine}></div>
@@ -101,8 +104,8 @@ export default function WeekScheduleView({ sessions, selectedDate, allTasks }) {
                                 })}
                             </div>
                         </div>
-                    </div>
-                ))}
+                    ))}
+                </div>
             </div>
             {selectedSession && (
                 <TaskSessionDetailsModal
