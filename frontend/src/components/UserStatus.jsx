@@ -10,6 +10,7 @@ export default function UserStatus({ selectedUser, currentUser }) {
     const [isLoading, setIsLoading] = useState(true);
     const [hasAccess, setHasAccess] = useState(true);
     const [displayUserId, setDisplayUserId] = useState(currentUser.user_id);
+    const [historyView, setHistoryView] = useState('day'); // State to control the view in WorkHistoryModal
 
     useEffect(() => {
         const checkAccess = async () => {
@@ -73,8 +74,9 @@ export default function UserStatus({ selectedUser, currentUser }) {
 
     useEffect(() => {
         fetchStatus();
-        const interval = setInterval(fetchStatus, 30000); // Refresh every 30 seconds
-        return () => clearInterval(interval);
+        // The polling interval is removed as real-time updates will be handled by WebSockets.
+        // const interval = setInterval(fetchStatus, 30000); // Refresh every 30 seconds
+        // return () => clearInterval(interval);
     }, [fetchStatus]);
 
     const handleShowHistory = async () => {
@@ -118,6 +120,8 @@ export default function UserStatus({ selectedUser, currentUser }) {
                 <WorkHistoryModal
                     userId={displayUserId}
                     onClose={() => setHistoryVisible(false)}
+                    currentView={historyView}
+                    onCurrentViewChange={setHistoryView}
                 />
             )}
         </div>

@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { AuthProvider, AuthContext } from './AuthContext';
+import { SocketProvider } from './SocketContext'; // Import SocketProvider
 import Login from './components/Login';
 
 function Root() {
@@ -11,6 +12,8 @@ function Root() {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <AuthProvider>
-    <Root />
+    <SocketProvider> {/* Wrap with SocketProvider */}
+      <Root />
+    </SocketProvider>
   </AuthProvider>
 );

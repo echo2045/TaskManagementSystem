@@ -2,6 +2,18 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const app = express();
+const http = require('http');
+const { Server } = require('socket.io');
+
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*", // Allow all origins for now, refine later
+    methods: ["GET", "POST"]
+  }
+});
+
+module.exports = { app, io, httpServer }; // Export io along with app and httpServer
 
 const authRoutes         = require('./routes/authRoutes');
 const authenticate       = require('./middleware/auth');
@@ -37,6 +49,6 @@ app.get('/', (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

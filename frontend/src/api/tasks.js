@@ -19,6 +19,11 @@ export function getTasksForUser() {
   return axios.get(`${BASE_URL}`).then(res => res.data);
 }
 
+// ✅ Fetch single task by ID
+export function getTask(task_id) {
+    return axios.get(`${BASE_URL}/${task_id}`).then(res => res.data);
+}
+
 // ✅ Fetch archived tasks
 export function getArchivedTasksForUser(user_id) {
   return axios.get(`${BASE_URL}/archive/${user_id}`).then(res => res.data);

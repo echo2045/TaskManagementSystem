@@ -1,4 +1,5 @@
 const pool = require('../db');
+const { io } = require('../index'); // Import io directly
 
 // GET /api/tasks
 const getAllTasks = async (req, res) => {
@@ -60,6 +61,21 @@ const getAllTasks = async (req, res) => {
   }
 };
 
+// GET /api/tasks/:task_id
+const getTaskById = async (req, res) => {
+    const { task_id } = req.params;
+    try {
+        const result = await pool.query('SELECT * FROM tasks WHERE task_id = $1', [task_id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Task not found' });
+        }
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('Error fetching task:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+};
+
 // GET /api/tasks/archive/:user_id
 const getArchivedTasksForUser = async (req, res) => {
   const { user_id } = req.params;
@@ -101,7 +117,7 @@ const getArchivedTasksForUser = async (req, res) => {
         full_name: row.full_name,
         delegated_by: row.delegated_by || null,
         importance: row.assignee_importance,
-        urgency: row.assignee_urgency,
+        urgency: row.urgency,
         is_completed: row.is_completed,
         start_date: row.start_date
       });
@@ -491,6 +507,9 @@ const startWorkSession = async (req, res) => {
             [taskId, user_id]
         );
 
+        // Emit WebSocket event
+        io.emit('workSessionUpdate', { userId: user_id, taskId: taskId, type: 'start' });
+
         res.status(201).json(result.rows[0]);
     } catch (err) {
         console.error('Error starting work session:', err.message);
@@ -517,6 +536,9 @@ const stopWorkSession = async (req, res) => {
         if (result.rowCount === 0) {
             return res.status(404).json({ error: 'No active work session found to stop.' });
         }
+
+        // Emit WebSocket event
+        io.emit('workSessionUpdate', { userId: user_id, type: 'stop' });
 
         res.status(200).json(result.rows[0]);
     } catch (err) {
@@ -584,6 +606,7 @@ const getCurrentTask = async (req, res) => {
 
 module.exports = {
   getAllTasks,
+  getTaskById,
   getArchivedTasksForUser,
   createTask,
   updateTask,
@@ -591,7 +614,7 @@ module.exports = {
   deleteTask,
   getTaskAssignees,
   assignTask,
-unassignTask,
+  unassignTask,
   markAssignmentCompleted,
   updateAssignmentStartDate,
   startWorkSession,

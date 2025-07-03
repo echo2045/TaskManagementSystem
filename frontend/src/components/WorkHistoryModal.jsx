@@ -6,12 +6,11 @@ import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import DayScheduleView from './DayScheduleView';
 import WeekScheduleView from './WeekScheduleView';
 
-export default function WorkHistoryModal({ userId, onClose }) {
+export default function WorkHistoryModal({ userId, onClose, currentView, onCurrentViewChange }) {
     const [workSessions, setWorkSessions] = useState([]);
     const [allTasks, setAllTasks] = useState([]);
     const [users, setUsers] = useState([]);
     const [selectedDate, setSelectedDate] = useState(new Date());
-    const [currentView, setCurrentView] = useState('day'); // 'day' or 'week'
     const [taskTypeFilter, setTaskTypeFilter] = useState('');
     const [taskStatusFilter, setTaskStatusFilter] = useState('all'); // 'all', 'pending', 'completed', 'late', 'incomplete'
 
@@ -136,13 +135,13 @@ export default function WorkHistoryModal({ userId, onClose }) {
 
                     <div style={viewToggle}>
                         <button
-                            onClick={() => setCurrentView('day')}
+                            onClick={() => onCurrentViewChange('day')}
                             style={{ ...toggleButton, background: currentView === 'day' ? '#007bff' : '#ccc' }}
                         >
                             Day
                         </button>
                         <button
-                            onClick={() => setCurrentView('week')}
+                            onClick={() => onCurrentViewChange('week')}
                             style={{ ...toggleButton, background: currentView === 'week' ? '#007bff' : '#ccc' }}
                         >
                             Week

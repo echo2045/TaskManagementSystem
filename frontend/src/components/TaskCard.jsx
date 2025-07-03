@@ -1,6 +1,7 @@
 // src/components/TaskCard.jsx
 import React, { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../AuthContext';
+import { useSocket } from '../SocketContext'; // Import useSocket
 import {
   getTaskColor,
   borderColors,
@@ -30,18 +31,43 @@ export default function TaskCard({
   showAreaNameInstead = false
 }) {
   const { user: authUser } = useContext(AuthContext);
+  const socket = useSocket();
   const isAuthOwner = authUser.user_id === task.owner_id;
 
   const [assignees, setAssignees] = useState([]);
   const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
   const [completionState, setCompletionState] = useState(null);
   const [currentActiveTask, setCurrentActiveTask] = useState(null);
+  const [isWorkingActionLoading, setIsWorkingActionLoading] = useState(false);
 
   useEffect(() => {
     getAssignees(task.task_id).then(setAssignees).catch(console.error);
   }, [task.task_id]);
 
   useEffect(() => {
+    if (!socket) return;
+
+    const handleWorkSessionUpdate = ({ userId, taskId, type }) => {
+      if (userId === authUser.user_id) {
+        if (type === 'start') {
+          // If the update is for the current task, set it
+          if (taskId === task.task_id) {
+            setCurrentActiveTask(task);
+          } else {
+            // If another task was started, set currentActiveTask to that task
+            // (This might require fetching the full task details if not already available)
+            // For now, we'll just set it to a placeholder if it's not this task
+            setCurrentActiveTask({ task_id: taskId });
+          }
+        } else if (type === 'stop') {
+          setCurrentActiveTask(null);
+        }
+      }
+    };
+
+    socket.on('workSessionUpdate', handleWorkSessionUpdate);
+
+    // Initial fetch of current active task
     const fetchCurrentActiveTask = async () => {
       try {
         const activeTask = await getCurrentTask(authUser.user_id);
@@ -51,9 +77,11 @@ export default function TaskCard({
       }
     };
     fetchCurrentActiveTask();
-    const interval = setInterval(fetchCurrentActiveTask, 10000); // Refresh every 10 seconds
-    return () => clearInterval(interval);
-  }, [authUser.user_id]);
+
+    return () => {
+      socket.off('workSessionUpdate', handleWorkSessionUpdate);
+    };
+  }, [socket, authUser.user_id, task]);
 
   const viewIsOwner = viewingUserId === task.owner_id;
   const viewIsAssignee = assignees.some(a => a.user_id === viewingUserId);
@@ -192,25 +220,33 @@ export default function TaskCard({
 
   const handleStartWork = async (e) => {
     e.stopPropagation();
+    setIsWorkingActionLoading(true);
     try {
       await startWorkSession(task.task_id);
-      const activeTask = await getCurrentTask(authUser.user_id);
-      setCurrentActiveTask(activeTask);
+      setCurrentActiveTask(task); // Optimistic update
+      // Fetch actual current task in background to ensure consistency
+      getCurrentTask(authUser.user_id).then(setCurrentActiveTask).catch(console.error);
     } catch (error) {
       console.error("Error starting work session:", error);
       alert(error.response?.data?.error || "Failed to start work session.");
+    } finally {
+      setIsWorkingActionLoading(false);
     }
   };
 
   const handleStopWork = async (e) => {
     e.stopPropagation();
+    setIsWorkingActionLoading(true);
     try {
       await stopWorkSession();
-      const activeTask = await getCurrentTask(authUser.user_id);
-      setCurrentActiveTask(activeTask);
+      setCurrentActiveTask(null); // Optimistic update
+      // Fetch actual current task in background to ensure consistency
+      getCurrentTask(authUser.user_id).then(setCurrentActiveTask).catch(console.error);
     } catch (error) {
       console.error("Error stopping work session:", error);
       alert(error.response?.data?.error || "Failed to stop work session.");
+    } finally {
+      setIsWorkingActionLoading(false);
     }
   };
 
@@ -374,7 +410,7 @@ export default function TaskCard({
               {!isWorkingOnThisTask && (
                 <button
                   onClick={handleStartWork}
-                  disabled={isWorkingOnAnotherTask}
+                  disabled={isWorkingOnAnotherTask || isWorkingActionLoading}
                   style={{
                     padding: '0.3rem 0.6rem',
                     backgroundColor: isWorkingOnAnotherTask ? '#ccc' : '#4CAF50',
@@ -391,6 +427,7 @@ export default function TaskCard({
               {isWorkingOnThisTask && (
                 <button
                   onClick={handleStopWork}
+                  disabled={isWorkingActionLoading}
                   style={{
                     padding: '0.3rem 0.6rem',
                     backgroundColor: '#F44336',

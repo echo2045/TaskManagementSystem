@@ -137,10 +137,11 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
     return null;
   };
 
-  const isSubmitDisabled =
-    !form.title.trim() ||
-    !form.deadline ||
-    (taskType === 'project' && !form.project_id) ||
+  const isSubmitDisabled = 
+    !form.title.trim() || 
+    !form.deadline || 
+    !form.time_estimate || 
+    (taskType === 'project' && !form.project_id) || 
     (taskType === 'area' && !form.area_id);
 
   return (
@@ -179,6 +180,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
               onChange={(e) => setForm({ ...form, time_estimate: e.target.value })}
               placeholder="e.g., 4.5"
               style={{ width: '100%', padding: '0.5rem' }}
+              required
             />
           </div>
 
@@ -228,8 +230,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
               <label>Select Area</label>
               <select
                 value={form.area_id || ''}
-                onChange={(e) => setForm({ ...form, area_id: Number(e.target.value) })}
-                required
+                onChange={(e) => setForm({ ...form, area_id: Number(e.target.value) })}n                required
                 style={{ width: '100%', padding: '0.5rem' }}
               >
                 <option value="" disabled>Select an area</option>

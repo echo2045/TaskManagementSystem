@@ -15,7 +15,8 @@ const {
   startWorkSession,
   stopWorkSession,
   getWorkHistory,
-  getCurrentTask
+  getCurrentTask,
+  getTaskById
 } = require('../controllers/taskController');
 const authenticate = require('../middleware/auth');
 
@@ -23,6 +24,7 @@ router.use(authenticate);
 
 // Task CRUD
 router.get('/', getAllTasks);
+router.get('/:task_id', getTaskById);
 router.get('/archive/:user_id', getArchivedTasksForUser);
 router.post('/', createTask);
 router.patch('/:task_id', updateTask);

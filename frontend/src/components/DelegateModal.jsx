@@ -6,7 +6,8 @@ import {
   getAssignees,
   addAssignee,
   removeAssignee,
-  updateTask
+  updateTask,
+  getTask
 } from '../api/tasks';
 import { interiorColors } from '../utils/getTaskColor';
 import { FiHelpCircle } from 'react-icons/fi';
@@ -14,6 +15,7 @@ import EisenhowerHelpModal from './EisenhowerHelpModal';
 
 export default function DelegateModal({ taskId, onClose }) {
   const { user } = useContext(AuthContext);
+  const [task, setTask] = useState(null);
   const [assignees, setAssignees] = useState([]);
   const [available, setAvailable] = useState([]);
   const [pendingAssign, setPendingAssign] = useState({});
@@ -21,6 +23,11 @@ export default function DelegateModal({ taskId, onClose }) {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
+    const fetchTaskDetails = async () => {
+        const taskDetails = await getTask(taskId);
+        setTask(taskDetails);
+    };
+    fetchTaskDetails();
     fetchAssignees();
   }, [taskId]);
 
@@ -45,7 +52,7 @@ export default function DelegateModal({ taskId, onClose }) {
     const today = new Date().toLocaleDateString('en-CA');
     setPendingAssign(prev => ({
       ...prev,
-      [u.user_id]: { importance: 5, urgency: 5, start_date: today, time_estimate: '' }
+      [u.user_id]: { importance: 5, urgency: 5, start_date: today, time_estimate: task ? task.time_estimate : '' }
     }));
   };
 
@@ -89,6 +96,7 @@ export default function DelegateModal({ taskId, onClose }) {
   const handleConfirmAssign = async (u) => {
     const { importance, urgency, start_date, time_estimate } = pendingAssign[u.user_id];
     if (!start_date) return alert('Start date required');
+    if (!time_estimate) return alert('Time estimate is required');
     const isoDate = toUtcIsoDate(start_date);
     await addAssignee(taskId, u.user_id, importance, urgency, isoDate, time_estimate ? Number(time_estimate) : null);
     setPendingAssign(prev => {
@@ -209,6 +217,7 @@ export default function DelegateModal({ taskId, onClose }) {
                       onChange={e => handleTimeEstimateChange(u.user_id, e.target.value)}
                       placeholder="e.g., 4.5"
                       style={{ marginLeft: '0.5rem' }}
+                      required
                     />
                   </label>
                   <button onClick={() => handleConfirmAssign(u)} style={confirmBtn}>Confirm</button>
