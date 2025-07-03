@@ -21,9 +21,13 @@ export default function WeekScheduleView({ sessions, selectedDate, allTasks }) {
         const targetDay = new Date(startOfWeek);
         targetDay.setDate(startOfWeek.getDate() + dayIndex);
 
+        const nextDay = new Date(targetDay);
+        nextDay.setDate(targetDay.getDate() + 1);
+
         return sessions.filter(session => {
             const sessionStart = new Date(session.start_time);
-            return sessionStart.toDateString() === targetDay.toDateString();
+            const sessionEnd = session.end_time ? new Date(session.end_time) : new Date();
+            return sessionStart < nextDay && sessionEnd > targetDay;
         });
     };
 
@@ -70,17 +74,31 @@ export default function WeekScheduleView({ sessions, selectedDate, allTasks }) {
                                     const task = getTaskDetails(session.task_id);
                                     if (!task) return null;
 
-                                    const start = new Date(session.start_time);
-                                    const end = session.end_time ? new Date(session.end_time) : new Date();
+                                    const sessionStart = new Date(session.start_time);
+                                    const sessionEnd = session.end_time ? new Date(session.end_time) : new Date();
 
-                                    const startHour = start.getHours();
-                                    const startMinutes = start.getMinutes();
-                                    const endHour = end.getHours();
-                                    const endMinutes = end.getMinutes();
+                                    const startOfWeek = new Date(selectedDate);
+                                    startOfWeek.setDate(selectedDate.getDate() - selectedDate.getDay());
+                                    startOfWeek.setHours(0, 0, 0, 0);
 
-                                    const topPosition = (startHour * 60 + startMinutes) / 60 * HOUR_HEIGHT; // Pixels from top
-                                    const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
-                                    const height = durationMinutes / 60 * HOUR_HEIGHT; // Pixels
+                                    const currentDay = new Date(startOfWeek);
+                                    currentDay.setDate(startOfWeek.getDate() + dayIndex);
+
+                                    const nextDay = new Date(currentDay);
+                                    nextDay.setDate(currentDay.getDate() + 1);
+
+                                    const segmentStart = sessionStart > currentDay ? sessionStart : currentDay;
+                                    const segmentEnd = sessionEnd < nextDay ? sessionEnd : nextDay;
+
+                                    const startHour = segmentStart.getHours();
+                                    const startMinutes = segmentStart.getMinutes();
+
+                                    const topPosition = (startHour * 60 + startMinutes) / 60 * HOUR_HEIGHT;
+
+                                    const durationMinutes = (segmentEnd.getTime() - segmentStart.getTime()) / (1000 * 60);
+                                    const height = durationMinutes / 60 * HOUR_HEIGHT;
+
+                                    if (height <= 0) return null;
 
                                     const taskColorType = getTaskColor(task.importance, task.urgency);
                                     const backgroundColor = interiorColors[taskColorType];
@@ -88,7 +106,7 @@ export default function WeekScheduleView({ sessions, selectedDate, allTasks }) {
 
                                     return (
                                         <div
-                                            key={session.session_id}
+                                            key={`${session.session_id}-${dayIndex}`}
                                             style={{
                                                 ...taskBlock,
                                                 top: `${topPosition}px`,
