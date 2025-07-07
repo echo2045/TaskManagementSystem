@@ -1,43 +1,68 @@
-// src/components/Notifications.jsx
-import React, { useState, useEffect, useContext, useRef } from 'react';
-import { Bell, X }         from 'lucide-react';
-import { AuthContext }     from '../AuthContext';
-import {
-  getNotificationsForUser,
-  deleteNotification
-} from '../api/notifications';
+import React, { useState, useEffect, useContext } from 'react';
+import { Bell, X } from 'lucide-react';
+import { AuthContext } from '../AuthContext';
+import { getNotificationsForUser, deleteNotification } from '../api/notifications';
+import { useSocket } from '../SocketContext';
 
 export default function Notifications() {
   const { user } = useContext(AuthContext);
-  const [notes,           setNotes]           = useState([]);
-  const [open,            setOpen]            = useState(false);
-  const [lastSeenId,      setLastSeenId]      = useState(0);
-  const [preOpenSeenId,   setPreOpenSeenId]   = useState(0);
+  const socket = useSocket();
+  const [notes, setNotes] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [lastSeenId, setLastSeenId] = useState(0);
+  const [preOpenSeenId, setPreOpenSeenId] = useState(0);
   const storageKey = `lastSeenNotif_${user?.user_id}`;
 
-  // 1) On mount, load persisted lastSeenId
+  // 1) On mount, load persisted lastSeenId and fetch initial notifications
   useEffect(() => {
     if (!user) return;
     const stored = parseInt(localStorage.getItem(storageKey), 10);
     setLastSeenId(isNaN(stored) ? 0 : stored);
     setPreOpenSeenId(isNaN(stored) ? 0 : stored);
-  }, [user, storageKey]);
 
-  // 2) Poll for notifications every 30s
-  useEffect(() => {
-    if (!user) return;
-    const fetchNotes = async () => {
+    const fetchInitialNotes = async () => {
       try {
         const data = await getNotificationsForUser(user.user_id);
         setNotes(data);
       } catch (err) {
-        console.error('Error fetching notifications', err);
+        console.error('Error fetching initial notifications', err);
       }
     };
-    fetchNotes();
-    const id = setInterval(fetchNotes, 30000);
-    return () => clearInterval(id);
-  }, [user]);
+    fetchInitialNotes();
+  }, [user, storageKey]);
+
+  // 2) Listen for new notifications via socket
+  useEffect(() => {
+    if (!socket || !user) return;
+
+    const handleNewNotification = (notification) => {
+      if (notification.user_id === user.user_id) {
+        setNotes((prevNotes) => {
+          // Prevent duplicates if the notification already exists
+          if (!prevNotes.some(n => n.notification_id === notification.notification_id)) {
+            return [notification, ...prevNotes];
+          }
+          return prevNotes;
+        });
+      }
+    };
+
+    socket.on('new_notification', (notification) => {
+      if (notification.user_id === user.user_id) {
+        setNotes((prevNotes) => {
+          // Prevent duplicates if the notification already exists
+          if (!prevNotes.some(n => n.notification_id === notification.notification_id)) {
+            return [notification, ...prevNotes];
+          }
+          return prevNotes;
+        });
+      }
+    });
+
+    return () => {
+      socket.off('new_notification', handleNewNotification);
+    };
+  }, [socket, user]);
 
   // 3) Compute badge count: any IDs greater than lastSeenId
   const unseenCount = notes.filter(n => n.notification_id > lastSeenId).length;
@@ -50,7 +75,7 @@ export default function Notifications() {
         (max,n) => n.notification_id > max ? n.notification_id : max,
         lastSeenId
       );
-      setPreOpenSeenId(lastSeenId);
+      setPreOpenSeenId(lastSeenId); // Set preOpenSeenId to the new maxId when opening
       setLastSeenId(maxId);
       localStorage.setItem(storageKey, maxId);
     }

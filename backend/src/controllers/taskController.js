@@ -317,15 +317,7 @@ module.exports = (io) => {
         const assignerInfo = await pool.query('SELECT full_name FROM users WHERE user_id = $1', [assigned_by]);
 
         if (taskInfo.rows.length > 0 && assignerInfo.rows.length > 0) {
-          const taskTitle = taskInfo.rows[0].title;
-          const assignerName = assignerInfo.rows[0].full_name;
-          const message = `${assignerName} assigned you a new task: "${taskTitle}"`;
-
-          // Create notification for the assignee
-          await pool.query(
-            'INSERT INTO notifications (user_id, message) VALUES ($1, $2)',
-            [user_id, message]
-          );
+          // The trigger now handles notification creation
         }
 
         res.status(201).json({ message: 'Task assigned successfully.' });
