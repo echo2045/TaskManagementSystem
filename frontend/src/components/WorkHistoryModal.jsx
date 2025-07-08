@@ -54,48 +54,35 @@ export default function WorkHistoryModal({ userId, onClose, currentView, onCurre
     }, [initialHistoryDate]);
 
     const filteredSessions = React.useMemo(() => {
-            console.log('WorkHistoryModal: selectedDate in useMemo:', selectedDate);
-            if (isNaN(selectedDate.getTime())) {
-                console.error('WorkHistoryModal: Invalid selectedDate received in useMemo:', selectedDate);
-                return []; // Return empty array if selectedDate is invalid
-            }
             let filtered = workSessions;
-        console.log('WorkHistoryModal: Filtering sessions. Total sessions:', workSessions.length);
-        console.log('WorkHistoryModal: Selected Date:', selectedDate.toDateString());
 
-        // Filter by date
-        if (currentView === 'day') {
-            const selectedDateUTCString = selectedDate.toISOString().split('T')[0];
-            filtered = filtered.filter(session => {
-                if (!session.start_time) {
-                    console.error('WorkHistoryModal: Session has no start_time:', session);
-                    return false; // Skip sessions without a start_time
-                }
-                const sessionDate = new Date(session.start_time);
-                if (isNaN(sessionDate.getTime())) {
-                    console.error('WorkHistoryModal: Invalid Date for session', session.session_id, 'start_time:', session.start_time);
-                    return false; // Skip invalid dates
-                }
-                const sessionDateUTCString = sessionDate.toISOString().split('T')[0];
-                const isMatch = (sessionDateUTCString === selectedDateUTCString);
-                console.log(`Comparing Day (UTC String): Session ${session.session_id} (${sessionDateUTCString}) with Selected (${selectedDateUTCString}). Match: ${isMatch}`);
-                return isMatch;
-            });
-        } else { // week view
-            const startOfWeek = new Date(selectedDate);
-            startOfWeek.setUTCHours(0, 0, 0, 0);
-            startOfWeek.setUTCDate(startOfWeek.getUTCDate() - startOfWeek.getUTCDay()); // Go to Sunday (UTC)
+            // Filter by date
+            if (currentView === 'day') {
+                const startOfDay = new Date(selectedDate);
+                startOfDay.setHours(0, 0, 0, 0);
+                const endOfDay = new Date(selectedDate);
+                endOfDay.setHours(23, 59, 59, 999);
 
-            const endOfWeek = new Date(startOfWeek);
-            endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 7);
+                filtered = filtered.filter(session => {
+                    const sessionStart = new Date(session.start_time);
+                    const sessionEnd = session.end_time ? new Date(session.end_time) : new Date();
+                    return sessionStart <= endOfDay && sessionEnd >= startOfDay;
+                });
+            } else { // week view
+                const startOfWeek = new Date(selectedDate);
+                startOfWeek.setDate(selectedDate.getDate() - selectedDate.getDay()); // Go to Sunday
+                startOfWeek.setHours(0, 0, 0, 0);
 
-            filtered = filtered.filter(session => {
-                const sessionDate = new Date(session.start_time); // Keep full time for range check
-                const isMatch = (sessionDate.getTime() >= startOfWeek.getTime() && sessionDate.getTime() < endOfWeek.getTime());
-                console.log(`Comparing Week (UTC Range): Session ${session.session_id} (${sessionDate.toISOString()}) between ${startOfWeek.toISOString()} and ${endOfWeek.toISOString()}. Match: ${isMatch}`);
-                return isMatch;
-            });
-        }
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 7);
+                endOfWeek.setHours(0, 0, 0, 0);
+
+                filtered = filtered.filter(session => {
+                    const sessionStart = new Date(session.start_time);
+                    const sessionEnd = session.end_time ? new Date(session.end_time) : new Date();
+                    return sessionStart < endOfWeek && sessionEnd > startOfWeek;
+                });
+            }
 
         // Filter by task type (Eisenhower matrix type)
         if (taskTypeFilter) {

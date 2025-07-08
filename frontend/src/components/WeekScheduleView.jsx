@@ -23,9 +23,11 @@ export default function WeekScheduleView({ sessions, selectedDate, allTasks, use
 
         const targetDay = new Date(startOfWeek);
         targetDay.setDate(startOfWeek.getDate() + dayIndex);
+        targetDay.setHours(0, 0, 0, 0); // Ensure targetDay is at the start of the day
 
         const nextDay = new Date(targetDay);
         nextDay.setDate(targetDay.getDate() + 1);
+        nextDay.setHours(0, 0, 0, 0); // Ensure nextDay is at the start of the next day
 
         return sessions.filter(session => {
             const sessionStart = new Date(session.start_time);
@@ -92,16 +94,16 @@ export default function WeekScheduleView({ sessions, selectedDate, allTasks, use
                                     const nextDay = new Date(currentDay);
                                     nextDay.setDate(currentDay.getDate() + 1);
 
-                                    const segmentStart = sessionStart > currentDay ? sessionStart : currentDay;
-                                    const segmentEnd = sessionEnd < nextDay ? sessionEnd : nextDay;
+                                    const segmentStart = sessionStart.getTime() < currentDay.getTime() ? currentDay : sessionStart;
+                                    const segmentEnd = sessionEnd.getTime() > nextDay.getTime() ? nextDay : sessionEnd;
 
                                     const startHour = segmentStart.getHours();
                                     const startMinutes = segmentStart.getMinutes();
 
-                                    const topPosition = (startHour * 60 + startMinutes) / 60 * HOUR_HEIGHT;
+                                    const topPosition = ((segmentStart.getHours() * 60 + segmentStart.getMinutes()) / 60) * HOUR_HEIGHT;
 
                                     const durationMinutes = (segmentEnd.getTime() - segmentStart.getTime()) / (1000 * 60);
-                                    const height = durationMinutes / 60 * HOUR_HEIGHT;
+                                    const height = (durationMinutes / 60) * HOUR_HEIGHT;
 
                                     if (height <= 0) return null;
 

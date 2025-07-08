@@ -17,7 +17,14 @@ export default function DayScheduleView({ sessions, selectedDate, allTasks, user
 
     const sessionsForDay = sessions.filter(session => {
         const sessionStart = new Date(session.start_time);
-        return sessionStart.toDateString() === selectedDate.toDateString();
+        const sessionEnd = session.end_time ? new Date(session.end_time) : new Date();
+
+        const startOfDay = new Date(selectedDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(selectedDate);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        return sessionStart <= endOfDay && sessionEnd >= startOfDay;
     });
 
     useEffect(() => {
@@ -58,14 +65,17 @@ export default function DayScheduleView({ sessions, selectedDate, allTasks, user
                         const start = new Date(session.start_time);
                         const end = session.end_time ? new Date(session.end_time) : new Date();
 
-                        const startHour = start.getHours();
-                        const startMinutes = start.getMinutes();
-                        const endHour = end.getHours();
-                        const endMinutes = end.getMinutes();
+                        const startOfDay = new Date(selectedDate);
+                        startOfDay.setHours(0, 0, 0, 0);
+                        const endOfDay = new Date(selectedDate);
+                        endOfDay.setHours(23, 59, 59, 999);
 
-                        const topPosition = (startHour * 60 + startMinutes) / 60 * HOUR_HEIGHT; // Pixels from top
-                        const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
-                        const height = durationMinutes / 60 * HOUR_HEIGHT; // Pixels
+                        const segmentStart = start.getTime() < startOfDay.getTime() ? startOfDay : start;
+                        const segmentEnd = end.getTime() > endOfDay.getTime() ? endOfDay : end;
+
+                        const topPosition = ((segmentStart.getHours() * 60 + segmentStart.getMinutes()) / 60) * HOUR_HEIGHT; // Pixels from top
+                        const durationMinutes = (segmentEnd.getTime() - segmentStart.getTime()) / (1000 * 60);
+                        const height = (durationMinutes / 60) * HOUR_HEIGHT; // Pixels
 
                         const sessionUserIsAssignee = task.assignees && task.assignees.some(a => a.user_id == session.user_id);
                         const assigneeEntry = sessionUserIsAssignee

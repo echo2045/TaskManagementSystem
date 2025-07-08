@@ -111,7 +111,7 @@ export default function UserStatus({ selectedUser, currentUser }) {
             try {
                 if (currentTask && typeof currentTask.start_time === 'string' && currentTask.start_time.length > 0) {
                     // Attempt to parse as UTC by replacing space with 'T' and appending 'Z'
-                    calculatedInitialHistoryDate = new Date(currentTask.start_time.replace(' ', 'T') + 'Z');
+                    calculatedInitialHistoryDate = new Date(currentTask.start_time);
                     // Validate if the date is actually valid after parsing
                     if (isNaN(calculatedInitialHistoryDate.getTime())) {
                         throw new RangeError("Invalid Date after parsing");
