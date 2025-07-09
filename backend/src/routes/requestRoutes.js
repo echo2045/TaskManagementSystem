@@ -75,7 +75,7 @@ module.exports = (io) => {
 
       const updatedRequest = result.rows[0];
 
-      // Update the corresponding notification
+      // Update the corresponding notification for the supervisor
       const notificationMessage = `Task request "${updatedRequest.title}" has been ${status}.`;
       const notificationMetadata = { ...JSON.parse(updatedRequest.metadata || '{}'), status: status };
 
@@ -86,6 +86,17 @@ module.exports = (io) => {
          RETURNING *`,
         [notificationMessage, JSON.stringify(notificationMetadata), request_id]
       );
+
+      // If the request is denied, send a notification to the requester
+      if (status === 'denied') {
+        const requesterNotificationMessage = `Your request for "${updatedRequest.title}" was denied by ${req.user.full_name}.`;
+        const requesterNotificationResult = await pool.query(
+          'INSERT INTO notifications (user_id, message, type, metadata) VALUES ($1, $2, $3, $4) RETURNING *'
+          , [updatedRequest.requester_id, requesterNotificationMessage, 'request_denied', JSON.stringify({ request_id: updatedRequest.request_id, title: updatedRequest.title, denied_by: req.user.full_name })]
+        );
+        const newRequesterNotification = requesterNotificationResult.rows[0];
+        io.to(newRequesterNotification.user_id.toString()).emit('new_notification', newRequesterNotification);
+      }
 
       res.json(updatedRequest);
     } catch (err) {
