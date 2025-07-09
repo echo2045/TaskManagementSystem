@@ -1,7 +1,7 @@
 // src/components/DelegateModal.jsx
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../AuthContext';
-import { getSupervisees, getUsers } from '../api/users';
+import { getSupervisees, getUsers, getUserById } from '../api/users';
 import {
   getAssignees,
   addAssignee,
@@ -13,7 +13,8 @@ import { interiorColors } from '../utils/getTaskColor';
 import { FiHelpCircle } from 'react-icons/fi';
 import EisenhowerHelpModal from './EisenhowerHelpModal';
 
-export default function DelegateModal({ taskId, onClose }) {
+export default function DelegateModal({ taskId, onClose, requesterId }) {
+  console.log('[DelegateModal] - Render', { taskId, requesterId });
   const { user } = useContext(AuthContext);
   const [task, setTask] = useState(null);
   const [assignees, setAssignees] = useState([]);
@@ -38,14 +39,19 @@ export default function DelegateModal({ taskId, onClose }) {
   };
 
   const fetchAvailable = async (assignedList) => {
-    const loader = (user.role === 'manager' || user.role === 'hr')
-      ? getUsers
-      : () => getSupervisees(user.user_id);
-    const all = await loader();
-    const assignedIds = new Set(assignedList.map(a => a.user_id));
-    setAvailable(
-      all.filter(u => !assignedIds.has(u.user_id) && u.user_id !== user.user_id)
-    );
+    if (requesterId) {
+      const user = await getUserById(requesterId);
+      setAvailable([user]);
+    } else {
+      const loader = (user.role === 'manager' || user.role === 'hr')
+        ? getUsers
+        : () => getSupervisees(user.user_id);
+      const all = await loader();
+      const assignedIds = new Set(assignedList.map(a => a.user_id));
+      setAvailable(
+        all.filter(u => !assignedIds.has(u.user_id) && u.user_id !== user.user_id)
+      );
+    }
   };
 
   const handleAddClick = (u) => {
@@ -121,7 +127,7 @@ export default function DelegateModal({ taskId, onClose }) {
   return (
     <div style={overlay}>
       <div style={{ ...modalContent, background: modalBg }}>
-        <button onClick={onClose} style={closeBtn}>×</button>
+        <button onClick={() => { console.log('[DelegateModal] - onClose clicked'); onClose(); }} style={closeBtn}>×</button>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2>Delegate Task</h2>
           <button onClick={() => setShowHelp(true)} style={helpBtn}>

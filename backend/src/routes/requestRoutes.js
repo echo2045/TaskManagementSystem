@@ -41,7 +41,7 @@ module.exports = (io) => {
         INSERT INTO notifications (user_id, message, type, metadata)
         VALUES ($1, $2, 'task_request', $3)
         RETURNING notification_id, user_id, message, created_at, is_read, type, metadata
-      `, [supervisor_id, message, JSON.stringify({ request_id: request.request_id, title: title })]);
+      `, [supervisor_id, message, JSON.stringify({ request_id: request.request_id, title: title, requester_id: requester_id })]);
 
       const newNotification = notificationResult.rows[0];
 

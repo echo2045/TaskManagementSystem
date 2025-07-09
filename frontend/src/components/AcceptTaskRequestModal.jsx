@@ -6,9 +6,11 @@ import { getAllProjects } from '../api/projects';
 import { getAllAreas } from '../api/areas';
 import { updateTaskRequest } from '../api/requests';
 import EisenhowerHelpModal from './EisenhowerHelpModal';
+import { useTaskRequestFlowManager } from '../utils/taskRequestFlowManager.jsx';
 
-export default function AcceptTaskRequestModal({ visible, onClose, request, onTaskCreated }) {
+export default function AcceptTaskRequestModal({ visible, onClose, request }) {
   const { user } = useContext(AuthContext);
+  const { startFlow, DelegateModalComponent, showDelegateModal } = useTaskRequestFlowManager(onClose);
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -65,31 +67,18 @@ export default function AcceptTaskRequestModal({ visible, onClose, request, onTa
   };
 
   const handleSubmit = async () => {
-    try {
-      setLoading(true);
-      const isoStartDate = toUtcIsoDate(form.start_date);
-      const payload = {
-        ...form,
-        owner_id: user.user_id, // Supervisor is the owner
-        start_date: isoStartDate,
-        deadline: form.deadline ? new Date(form.deadline).toISOString() : null,
-        project_id: taskType === 'project' ? form.project_id : null,
-        area_id: taskType === 'area' ? form.area_id : null,
-        time_estimate: form.time_estimate ? Number(form.time_estimate) : null
-      };
-      const createdTask = await createTask(payload);
+    console.log('[AcceptTaskRequestModal handleSubmit] - Start');
+    setLoading(true);
+    await startFlow({ formData: form, request, user, requesterId: request.requester_id });
+    console.log('[AcceptTaskRequestModal handleSubmit] - After startFlow');
+    setLoading(false);
+    console.log('[AcceptTaskRequestModal handleSubmit] - After setLoading(false)');
+    // onClose(); // This modal will close when DelegateModal closes
+  };
 
-      // Update the task request status to 'accepted'
-      await updateTaskRequest(request.request_id, 'accepted');
-
-      onTaskCreated(createdTask, request.requester_id); // Pass created task and requester to next modal
-      onClose();
-    } catch (err) {
-      console.error('AcceptTaskRequestModal error', err);
-      alert('Could not create task');
-    } finally {
-      setLoading(false);
-    }
+  const handleDelegateModalClose = () => {
+    setShowDelegateModal(false);
+    onClose(); // Now close the AcceptTaskRequestModal
   };
 
   const handleTypeChange = (type) => {
@@ -291,6 +280,8 @@ export default function AcceptTaskRequestModal({ visible, onClose, request, onTa
         </div>
 
         <EisenhowerHelpModal visible={showHelp} onClose={() => setShowHelp(false)} />
+
+        {DelegateModalComponent}
       </div>
     </div>
   );

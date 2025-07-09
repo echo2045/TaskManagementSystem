@@ -1,11 +1,15 @@
 import axios from 'axios';
+import apiClient from './apiClient';
 
 // 1) Base URL
 axios.defaults.baseURL = 'http://localhost:5000/api';
 
 // 2) Get all users
 export const getUsers = () =>
-  axios.get('/users').then(res => res.data);
+  apiClient.get('/users').then(res => res.data);
+
+export const getUserById = (id) =>
+  apiClient.get(`/users/${id}`).then(res => res.data);
 
 // 3) Create new user
 export const createUser = user =>

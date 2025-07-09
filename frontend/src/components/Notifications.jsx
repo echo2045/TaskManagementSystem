@@ -5,7 +5,7 @@ import { AuthContext } from '../AuthContext';
 import { getNotificationsForUser } from '../api/notifications';
 import { updateTaskRequest } from '../api/requests';
 import AcceptTaskRequestModal from './AcceptTaskRequestModal';
-import DelegateRequestedTaskModal from './DelegateRequestedTaskModal';
+import DelegateModal from './DelegateModal';
 
 export default function Notifications() {
   const { user } = useContext(AuthContext);
@@ -15,9 +15,6 @@ export default function Notifications() {
   const [preOpenSeenId, setPreOpenSeenId] = useState(0);
   const [createTaskModalOpen, setCreateTaskModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const [delegateModalOpen, setDelegateModalOpen] = useState(false);
-  const [taskToDelegate, setTaskToDelegate] = useState(null);
-  const [assigneeForDelegate, setAssigneeForDelegate] = useState(null);
   const storageKey = `lastSeenNotif_${user?.user_id}`;
 
   // 1) On mount, load persisted lastSeenId
@@ -76,15 +73,8 @@ export default function Notifications() {
     }
   };
 
-  const handleTaskCreated = (createdTask, requesterId) => {
-    setTaskToDelegate(createdTask);
-    setAssigneeForDelegate(requesterId);
-    setDelegateModalOpen(true);
-  };
-
   const handleCloseAllModals = () => {
     setCreateTaskModalOpen(false);
-    setDelegateModalOpen(false);
     // After handling, filter out the original notification
     if (selectedRequest) {
       setNotes(notes.filter(n => n.metadata?.request_id !== selectedRequest.request_id));
@@ -170,7 +160,7 @@ export default function Notifications() {
                     {n.type === 'task_request' && n.metadata && (
                       <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
                         <button
-                          onClick={() => handleAccept(n.metadata)}
+                          onClick={() => handleAccept(typeof n.metadata === 'string' ? JSON.parse(n.metadata) : n.metadata)}
                           style={{
                             background: '#4CAF50',
                             color: 'white',
@@ -213,20 +203,11 @@ export default function Notifications() {
       )}
 
       {createTaskModalOpen && selectedRequest && (
+        console.log('[Notifications Render] - AcceptTaskRequestModal condition', { createTaskModalOpen, selectedRequest }),
         <AcceptTaskRequestModal
           visible={createTaskModalOpen}
           onClose={handleCloseAllModals}
           request={selectedRequest}
-          onTaskCreated={handleTaskCreated}
-        />
-      )}
-
-      {delegateModalOpen && taskToDelegate && (
-        <DelegateRequestedTaskModal
-          visible={delegateModalOpen}
-          onClose={handleCloseAllModals}
-          task={taskToDelegate}
-          requesterId={assigneeForDelegate}
         />
       )}
     </div>
