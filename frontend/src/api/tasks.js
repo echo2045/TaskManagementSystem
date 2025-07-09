@@ -1,5 +1,6 @@
 // src/api/tasks.js
 import axios from 'axios';
+import apiClient from './apiClient';
 
 const BASE_URL = 'http://localhost:5000/api/tasks';
 
@@ -11,7 +12,7 @@ export function createTask(data) {
       ? new Date(data.start_date).toISOString()
       : null
   };
-  return axios.post(`${BASE_URL}`, payload);
+  return apiClient.post(`/tasks`, payload).then(res => res.data);
 }
 
 // ✅ Fetch tasks for current user
@@ -59,6 +60,8 @@ export function addAssignee(task_id, user_id, importance, urgency, start_date, a
     assigned_time_estimate
   });
 }
+
+export const assignTask = addAssignee;
 
 // ✅ Remove assignee
 export function removeAssignee(task_id, user_id) {

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
 import TaskCard from './TaskCard';
 import CreateTaskModal from './CreateTaskModal';
+import RequestTaskModal from './RequestTaskModal';
 import EisenhowerHelpModal from './EisenhowerHelpModal';
 import { getTasksForUser } from '../api/tasks';
 import { getSupervisees } from '../api/users';
@@ -19,6 +20,7 @@ export default function TaskBoard({ filterUser }) {
   const [groupByStartDate, setGroupByStartDate] = useState(false);
   const [superviseeIds, setSuperviseeIds] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
   const viewingUserId = filterUser?.user_id || user.user_id;
@@ -115,7 +117,7 @@ export default function TaskBoard({ filterUser }) {
           </div>
 
           {/* Create Button */}
-          <div style={{ padding: '0 1rem 1rem' }}>
+          <div style={{ padding: '0 1rem 1rem', display: 'flex', gap: '1rem' }}>
             <button
               onClick={() => setModalOpen(true)}
               style={{
@@ -129,12 +131,30 @@ export default function TaskBoard({ filterUser }) {
             >
               Create Task
             </button>
+            <button
+              onClick={() => setRequestModalOpen(true)}
+              style={{
+                padding: '0.5rem 1rem',
+                background: '#28a745',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Request Task
+            </button>
           </div>
 
           <CreateTaskModal
             visible={modalOpen}
             onClose={() => { setModalOpen(false); fetchTasks(); }}
             ownerId={user.user_id}
+          />
+          <RequestTaskModal
+            isOpen={requestModalOpen}
+            onClose={() => { setRequestModalOpen(false); fetchTasks(); }}
+            requesterId={user.user_id}
           />
           {showHelp && <EisenhowerHelpModal visible={true} onClose={() => setShowHelp(false)} />}
         </>

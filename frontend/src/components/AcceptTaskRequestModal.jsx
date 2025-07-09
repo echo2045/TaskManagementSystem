@@ -1,21 +1,21 @@
-// src/components/CreateTaskModal.jsx
 import React, { useState, useEffect, useContext } from 'react';
 import { FaQuestionCircle } from 'react-icons/fa';
 import { AuthContext } from '../AuthContext';
 import { createTask } from '../api/tasks';
 import { getAllProjects } from '../api/projects';
 import { getAllAreas } from '../api/areas';
+import { updateTaskRequest } from '../api/requests';
 import EisenhowerHelpModal from './EisenhowerHelpModal';
 
-export default function CreateTaskModal({ visible, onClose, ownerId }) {
+export default function AcceptTaskRequestModal({ visible, onClose, request, onTaskCreated }) {
   const { user } = useContext(AuthContext);
   const [form, setForm] = useState({
     title: '',
     description: '',
     deadline: '',
     start_date: '',
-    importance: 3,
-    urgency: 3,
+    importance: 1, // Default for delegate task
+    urgency: 6,    // Default for delegate task
     project_id: null,
     area_id: null,
     time_estimate: ''
@@ -27,15 +27,15 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
   const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
-    if (visible) {
+    if (visible && request) {
       const today = new Date().toLocaleDateString('en-CA');
       setForm({
-        title: '',
+        title: request.title || '',
         description: '',
         deadline: '',
         start_date: today,
-        importance: 5,
-        urgency: 5,
+        importance: 1,
+        urgency: 6,
         project_id: null,
         area_id: null,
         time_estimate: ''
@@ -53,7 +53,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
         getAllAreas(true).then(setAreas);
       }
     }
-  }, [visible, user]);
+  }, [visible, request, user]);
 
   if (!visible) return null;
 
@@ -70,17 +70,22 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
       const isoStartDate = toUtcIsoDate(form.start_date);
       const payload = {
         ...form,
-        owner_id: ownerId,
+        owner_id: user.user_id, // Supervisor is the owner
         start_date: isoStartDate,
         deadline: form.deadline ? new Date(form.deadline).toISOString() : null,
         project_id: taskType === 'project' ? form.project_id : null,
         area_id: taskType === 'area' ? form.area_id : null,
         time_estimate: form.time_estimate ? Number(form.time_estimate) : null
       };
-      await createTask(payload);
+      const createdTask = await createTask(payload);
+
+      // Update the task request status to 'accepted'
+      await updateTaskRequest(request.request_id, 'accepted');
+
+      onTaskCreated(createdTask, request.requester_id); // Pass created task and requester to next modal
       onClose();
     } catch (err) {
-      console.error('CreateTask error', err);
+      console.error('AcceptTaskRequestModal error', err);
       alert('Could not create task');
     } finally {
       setLoading(false);
@@ -97,7 +102,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
   };
 
   const renderTypeSelector = () => {
-    if (user.role === 'manager') {
+    if (user.role === 'manager' || user.role === 'team_lead') {
       return (
         <>
           <label>Is this task part of a project or area?</label>
@@ -148,7 +153,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
     <div style={overlay}>
       <div style={modal}>
         <button onClick={onClose} style={closeBtn} aria-label="Close">×</button>
-        <h2>Create Task</h2>
+        <h2>Accept and Create Task</h2>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
@@ -249,7 +254,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
             </div>
             <input
               type="range"
-              min={1} max={10}
+              min={1} max={5}
               value={form.importance}
               onChange={(e) => setForm({ ...form, importance: +e.target.value })}
               style={{ width: '100%' }}
@@ -260,7 +265,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
             <label>Urgency: {form.urgency}</label>
             <input
               type="range"
-              min={1} max={10}
+              min={6} max={10}
               value={form.urgency}
               onChange={(e) => setForm({ ...form, urgency: +e.target.value })}
               style={{ width: '100%' }}
@@ -307,7 +312,7 @@ const modal = {
   padding: '2.5rem',
   borderRadius: '10px',
   width: '500px',
-  boxSizing: 'border-box'
+  boxSizing: 'border-sizing'
 };
 
 const closeBtn = {

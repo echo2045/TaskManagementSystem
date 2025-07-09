@@ -39,8 +39,8 @@ exports.getNotificationsForUser = async (req, res) => {
 
     // B) Fetch ALL your notifications, including is_read
     const { rows } = await pool.query(
-      `SELECT notification_id, message, created_at, is_read
-         FROM notifications
+      `SELECT notification_id, message, created_at, is_read, type, metadata
+             FROM notifications
         WHERE user_id = $1
         ORDER BY created_at DESC`,
       [userId]
