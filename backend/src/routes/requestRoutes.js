@@ -73,7 +73,21 @@ module.exports = (io) => {
         return res.status(404).json({ error: 'Task request not found or you are not authorized to update it' });
       }
 
-      res.json(result.rows[0]);
+      const updatedRequest = result.rows[0];
+
+      // Update the corresponding notification
+      const notificationMessage = `Task request "${updatedRequest.title}" has been ${status}.`;
+      const notificationMetadata = { ...JSON.parse(updatedRequest.metadata || '{}'), status: status };
+
+      await pool.query(
+        `UPDATE notifications
+         SET message = $1, metadata = $2
+         WHERE metadata->>'request_id' = $3::text
+         RETURNING *`,
+        [notificationMessage, JSON.stringify(notificationMetadata), request_id]
+      );
+
+      res.json(updatedRequest);
     } catch (err) {
       console.error('Error updating task request:', err.message);
       res.status(500).json({ error: 'Failed to update task request' });

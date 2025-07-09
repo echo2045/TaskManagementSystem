@@ -70,10 +70,8 @@ export default function AcceptTaskRequestModal({ visible, onClose, request }) {
     console.log('[AcceptTaskRequestModal handleSubmit] - Start');
     setLoading(true);
     await startFlow({ formData: form, request, user, requesterId: request.requester_id });
-    console.log('[AcceptTaskRequestModal handleSubmit] - After startFlow');
-    setLoading(false);
-    console.log('[AcceptTaskRequestModal handleSubmit] - After setLoading(false)');
     // onClose(); // This modal will close when DelegateModal closes
+    console.log('[AcceptTaskRequestModal handleSubmit] - After startFlow');
   };
 
   const handleDelegateModalClose = () => {

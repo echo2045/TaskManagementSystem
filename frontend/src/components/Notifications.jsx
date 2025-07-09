@@ -157,36 +157,52 @@ export default function Notifications() {
                 }}>
                   <div style={{ fontSize: '0.9rem', color: '#000', flex: 1 }}>
                     {n.message}
-                    {n.type === 'task_request' && n.metadata && (
-                      <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
-                        <button
-                          onClick={() => handleAccept(typeof n.metadata === 'string' ? JSON.parse(n.metadata) : n.metadata)}
-                          style={{
-                            background: '#4CAF50',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            padding: '0.5rem 1rem',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Accept
-                        </button>
-                        <button
-                          onClick={() => handleDeny(n.metadata.request_id)}
-                          style={{
-                            background: '#F44336',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            padding: '0.5rem 1rem',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Deny
-                        </button>
-                      </div>
-                    )}
+                    {n.type === 'task_request' && n.metadata && (() => {
+                      const parsedMetadata = typeof n.metadata === 'string' ? JSON.parse(n.metadata) : n.metadata;
+                      if (parsedMetadata.status) {
+                        return (
+                          <span style={{
+                            fontSize: '0.8rem',
+                            fontWeight: 'bold',
+                            marginLeft: '0.5rem',
+                            color: parsedMetadata.status === 'accepted' ? '#4CAF50' : '#F44336'
+                          }}>
+                            {parsedMetadata.status.charAt(0).toUpperCase() + parsedMetadata.status.slice(1)}
+                          </span>
+                        );
+                      } else {
+                        return (
+                          <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+                            <button
+                              onClick={() => handleAccept(parsedMetadata)}
+                              style={{
+                                background: '#4CAF50',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                padding: '0.5rem 1rem',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Accept
+                            </button>
+                            <button
+                              onClick={() => handleDeny(parsedMetadata.request_id)}
+                              style={{
+                                background: '#F44336',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                padding: '0.5rem 1rem',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Deny
+                            </button>
+                          </div>
+                        );
+                      }
+                    })()}
                     <div style={{
                       fontSize: '0.75rem',
                       color: '#555',
