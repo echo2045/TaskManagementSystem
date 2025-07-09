@@ -14,6 +14,7 @@ import { FiHelpCircle } from 'react-icons/fi';
 import EisenhowerHelpModal from './EisenhowerHelpModal';
 
 export default function DelegateModal({ taskId, onClose, requesterId }) {
+  const isRequestDelegation = !!requesterId;
   console.log('[DelegateModal] - Render', { taskId, requesterId });
   const { user } = useContext(AuthContext);
   const [task, setTask] = useState(null);
@@ -110,7 +111,10 @@ export default function DelegateModal({ taskId, onClose, requesterId }) {
       delete updated[u.user_id];
       return updated;
     });
+    // Remove the assigned user from the available list
+    setAvailable(prev => prev.filter(user => user.user_id !== u.user_id));
     fetchAssignees();
+    onClose(); // Close the modal after successful assignment
   };
 
   const handleRemove = async u => {
@@ -164,13 +168,15 @@ export default function DelegateModal({ taskId, onClose, requesterId }) {
           </button>
         </div>
 
-        <input
-          type="text"
-          placeholder="Search by name..."
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          style={searchInput}
-        />
+        {isRequestDelegation ? null : (
+          <input
+            type="text"
+            placeholder="Search by name..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={searchInput}
+          />
+        )}
 
         <div style={scrollContainer}>
           {filteredAvailable.length === 0 ? (
