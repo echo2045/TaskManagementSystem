@@ -59,6 +59,7 @@ const userRoutes         = require('./routes/userRoutes');
 const taskRoutes = require('./routes/taskRoutes')(io);
 const notificationRoutes = require('./routes/notificationRoutes')(io);
 const projectRoutes      = require('./routes/projectRoutes');
+const requestRoutes = require('./routes/requestRoutes')(io);
 const areaRoutes         = require('./routes/areaRoutes');
 
 //const deleteUserRoutes = require('./routes/deleteUserRoutes');
@@ -77,6 +78,7 @@ app.use('/api/notifications', authenticate, notificationRoutes);
 
 // 🚧 TEMPORARILY allow public access to projects and areas
 app.use('/api/projects', projectRoutes); // 👈 No authenticate
+app.use('/api/requests', authenticate, requestRoutes);
 app.use('/api/areas', areaRoutes);       // 👈 No authenticate
 
 //app.use('/api/delete-user', deleteUserRoutes);

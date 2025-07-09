@@ -21,5 +21,7 @@ router.patch('/:id/password', userController.changePassword);
 // ── New Task Lists for a User ──
 router.get   ('/:id/tasks',         userController.getUserTasks);
 router.get   ('/:id/tasks/archive', userController.getUserArchivedTasks);
+router.get   ('/:id/current-task',  userController.getCurrentTask);
+router.get   ('/:id/work-history',  userController.getWorkHistory);
 
 module.exports = router;

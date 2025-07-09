@@ -2,6 +2,8 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Bell, X } from 'lucide-react';
 import { AuthContext } from '../AuthContext';
 import { getNotificationsForUser, deleteNotification } from '../api/notifications';
+import { updateTaskRequest } from '../api/requests';
+import CreateTaskModal from './CreateTaskModal';
 import { useSocket } from '../SocketContext';
 
 export default function Notifications() {
@@ -10,20 +12,24 @@ export default function Notifications() {
   const [notes, setNotes] = useState([]);
   const [open, setOpen] = useState(false);
   const [lastSeenId, setLastSeenId] = useState(0);
-  const [preOpenSeenId, setPreOpenSeenId] = useState(0);
+  const [createTaskModalOpen, setCreateTaskModalOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
   const storageKey = `lastSeenNotif_${user?.user_id}`;
 
   // 1) On mount, load persisted lastSeenId and fetch initial notifications
   useEffect(() => {
     if (!user) return;
     const stored = parseInt(localStorage.getItem(storageKey), 10);
+    const initialLastSeenId = isNaN(stored) ? 0 : stored;
     setLastSeenId(isNaN(stored) ? 0 : stored);
-    setPreOpenSeenId(isNaN(stored) ? 0 : stored);
+    console.log('Notifications: Initial lastSeenId from localStorage:', initialLastSeenId);
 
     const fetchInitialNotes = async () => {
       try {
         const data = await getNotificationsForUser(user.user_id);
-        setNotes(data);
+        // Filter out already seen notifications
+        const unseenNotifications = data.filter(n => n.notification_id > lastSeenId);
+        setNotes(unseenNotifications);
       } catch (err) {
         console.error('Error fetching initial notifications', err);
       }
@@ -36,7 +42,7 @@ export default function Notifications() {
     if (!socket || !user) return;
 
     const handleNewNotification = (notification) => {
-      if (notification.user_id === user.user_id) {
+      if (notification.user_id === user.user_id && notification.notification_id > lastSeenId) {
         setNotes((prevNotes) => {
           // Prevent duplicates if the notification already exists
           if (!prevNotes.some(n => n.notification_id === notification.notification_id)) {
@@ -47,17 +53,7 @@ export default function Notifications() {
       }
     };
 
-    socket.on('new_notification', (notification) => {
-      if (notification.user_id === user.user_id) {
-        setNotes((prevNotes) => {
-          // Prevent duplicates if the notification already exists
-          if (!prevNotes.some(n => n.notification_id === notification.notification_id)) {
-            return [notification, ...prevNotes];
-          }
-          return prevNotes;
-        });
-      }
-    });
+    socket.on('new_notification', handleNewNotification); // Use the named function
 
     return () => {
       socket.off('new_notification', handleNewNotification);
@@ -70,23 +66,48 @@ export default function Notifications() {
   // 4) Toggle panel open/close
   const togglePanel = () => {
     if (!open) {
-      // Opening: capture preOpenSeenId, then update lastSeenId
+      setOpen(true); // Open instantly
+    } else {
+      // When closing, update lastSeenId and persist to localStorage
       const maxId = notes.reduce(
-        (max,n) => n.notification_id > max ? n.notification_id : max,
+        (max, n) => n.notification_id > max ? n.notification_id : max,
         lastSeenId
       );
-      setPreOpenSeenId(lastSeenId); // Set preOpenSeenId to the new maxId when opening
       setLastSeenId(maxId);
       localStorage.setItem(storageKey, maxId);
+      setOpen(false); // Close instantly
     }
-    setOpen(o => !o);
+  };
+
+  const handleAccept = (request) => {
+    setSelectedRequest(request);
+    setCreateTaskModalOpen(true);
+  };
+
+  const handleDeny = async (requestId) => {
+    try {
+      await updateTaskRequest(requestId, 'denied');
+      setNotes(notes.filter(n => n.metadata?.request_id !== requestId));
+    } catch (err) {
+      console.error('Error denying task request:', err);
+    }
   };
 
   // 5) Dismiss a notification
   const handleDelete = async id => {
     try {
       await deleteNotification(id);
-      setNotes(n => n.filter(x => x.notification_id !== id));
+      setNotes(n => {
+        const updatedNotes = n.filter(x => x.notification_id !== id);
+        // If the deleted notification was the highest ID, update lastSeenId
+        if (id === notes.reduce((max, note) => Math.max(max, note.notification_id), 0)) {
+          const newMaxId = updatedNotes.reduce((max, note) => Math.max(max, note.notification_id), 0);
+          setLastSeenId(newMaxId);
+          localStorage.setItem(storageKey, newMaxId);
+        }
+        return updatedNotes;
+      });
+      console.log('Notifications: Deleted notification. New lastSeenId:', lastSeenId);
     } catch (err) {
       console.error('Error deleting notification', err);
     }
@@ -141,50 +162,61 @@ export default function Notifications() {
         }}>
           {notes.length === 0
             ? <div style={{ padding:'1rem', color:'#333' }}>No notifications.</div>
-            : notes.map(n => {
-              const isNew = n.notification_id > preOpenSeenId;
-              return (
-                <div key={n.notification_id} style={{
-                  background:    '#FFF3E0',
-                  border:        isNew
-                    ? '3px solid #E57373'
-                    : '1px solid #FFB74D',
-                  borderRadius:  '4px',
-                  padding:       '0.75rem',
-                  marginBottom:  '0.5rem',
-                  display:       'flex',
-                  justifyContent:'space-between',
-                  alignItems:    'flex-start'
-                }}>
-                  <div style={{ fontSize:'0.9rem', color:'#000', flex:1 }}>
-                    {n.message}
-                    <div style={{
-                      fontSize:   '0.75rem',
-                      color:      '#555',
-                      marginTop:  '0.25rem'
+            : (
+                <>
+                  {notes.map(n => (
+                    <div key={n.notification_id} style={{
+                      background:    '#FFF3E0',
+                      border:        '1px solid #FFB74D',
+                      borderRadius:  '4px',
+                      padding:       '0.75rem',
+                      marginBottom:  '0.5rem',
+                      display:       'flex',
+                      justifyContent:'space-between',
+                      alignItems:    'flex-start'
                     }}>
-                      {new Date(n.created_at).toLocaleString()}
+                      <div style={{ fontSize:'0.9rem', color:'#000', flex:1 }}>
+                        {n.message}
+                        <div style={{
+                          fontSize:   '0.75rem',
+                          color:      '#555',
+                          marginTop:  '0.25rem'
+                        }}>
+                          {new Date(n.created_at).toLocaleString()}
+                        </div>
+                        {n.type === 'task_request' && (
+                          <div style={{ marginTop: '0.5rem' }}>
+                            <button onClick={() => handleAccept(n.metadata)}>Accept</button>
+                            <button onClick={() => handleDeny(n.metadata.request_id)}>Deny</button>
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleDelete(n.notification_id)}
+                        style={{
+                          background: 'transparent',
+                          border:     'none',
+                          cursor:     'pointer',
+                          fontSize:   '1.2rem',
+                          lineHeight: '1'
+                        }}
+                        aria-label="Dismiss"
+                      >
+                        <X size={16} color="#555" />
+                      </button>
                     </div>
-                  </div>
-                  <button
-                    onClick={() => handleDelete(n.notification_id)}
-                    style={{
-                      background: 'transparent',
-                      border:     'none',
-                      cursor:     'pointer',
-                      fontSize:   '1.2rem',
-                      lineHeight: '1'
-                    }}
-                    aria-label="Dismiss"
-                  >
-                    <X size={16} color="#555" />
-                  </button>
-                </div>
-              );
-            })
+                  ))}
+                </>
+              )
           }
         </div>
       )}
+      <CreateTaskModal
+        visible={createTaskModalOpen}
+        onClose={() => setCreateTaskModalOpen(false)}
+        ownerId={user.user_id}
+        request={selectedRequest}
+      />
     </div>
   );
 }

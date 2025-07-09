@@ -3,7 +3,7 @@ const pool   = require('../db');
 const bcrypt = require('bcrypt');
 const jwt    = require('jsonwebtoken');
 
-const JWT_SECRET  = process.env.JWT_SECRET || 'replace_this_with_strong_secret';
+const JWT_SECRET  = process.env.JWT_SECRET;
 const SALT_ROUNDS = 10;
 
 // POST /api/auth/register

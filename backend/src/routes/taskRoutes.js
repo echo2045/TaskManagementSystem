@@ -46,8 +46,8 @@ module.exports = (io) => {
   // Work Sessions
   router.post('/:taskId/start', startWorkSession);
   router.post('/stop', stopWorkSession);
-  router.get('/users/:userId/work-history', getWorkHistory);
-  router.get('/users/:userId/current-task', getCurrentTask);
+  
+  
 
   return router;
 };

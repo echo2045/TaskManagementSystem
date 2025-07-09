@@ -2,12 +2,12 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { FaQuestionCircle } from 'react-icons/fa';
 import { AuthContext } from '../AuthContext';
-import { createTask } from '../api/tasks';
+import { createTask, assignTask } from '../api/tasks';
 import { getAllProjects } from '../api/projects';
 import { getAllAreas } from '../api/areas';
 import EisenhowerHelpModal from './EisenhowerHelpModal';
 
-export default function CreateTaskModal({ visible, onClose, ownerId }) {
+export default function CreateTaskModal({ visible, onClose, ownerId, request = null }) {
   const { user } = useContext(AuthContext);
   const [form, setForm] = useState({
     title: '',
@@ -23,6 +23,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
   const [projects, setProjects] = useState([]);
   const [areas, setAreas] = useState([]);
   const [taskType, setTaskType] = useState(null);
+  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
@@ -30,7 +31,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
     if (visible) {
       const today = new Date().toLocaleDateString('en-CA');
       setForm({
-        title: '',
+        title: request ? request.title : '',
         description: '',
         deadline: '',
         start_date: today,
@@ -41,6 +42,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
         time_estimate: ''
       });
       setTaskType(null);
+      setStep(1);
 
       if (user.role === 'manager' || user.role === 'team_lead') {
         getAllProjects().then(data => {
@@ -53,7 +55,7 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
         getAllAreas(true).then(setAreas);
       }
     }
-  }, [visible, user]);
+  }, [visible, user, request]);
 
   if (!visible) return null;
 
@@ -77,7 +79,19 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
         area_id: taskType === 'area' ? form.area_id : null,
         time_estimate: form.time_estimate ? Number(form.time_estimate) : null
       };
-      await createTask(payload);
+      const createdTask = await createTask(payload);
+
+      if (request) {
+        await assignTask(createdTask.task_id, {
+          user_id: request.requester_id,
+          importance: form.importance,
+          urgency: form.urgency,
+          start_date: isoStartDate,
+          assigned_time_estimate: form.time_estimate
+        });
+        await updateTaskRequest(request.request_id, 'accepted');
+      }
+
       onClose();
     } catch (err) {
       console.error('CreateTask error', err);
@@ -148,141 +162,153 @@ export default function CreateTaskModal({ visible, onClose, ownerId }) {
     <div style={overlay}>
       <div style={modal}>
         <button onClick={onClose} style={closeBtn} aria-label="Close">×</button>
-        <h2>Create Task</h2>
+        <h2>{request ? 'Accept and Delegate Task' : 'Create Task'}</h2>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
-            <label>Title</label>
-            <input
-              type="text"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              required
-              style={{ width: '100%', padding: '0.5rem' }}
-            />
-          </div>
+        {step === 1 && (
+          <>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label>Title</label>
+                <input
+                  type="text"
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  required
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
 
-          <div>
-            <label>Description</label>
-            <textarea
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              rows={5}
-              style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
-            />
-          </div>
+              <div>
+                <label>Description</label>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  rows={5}
+                  style={{ width: '100%', padding: '0.5rem', fontSize: '1rem' }}
+                />
+              </div>
+            </div>
+            <button onClick={() => setStep(2)} style={{ marginTop: '1rem' }}>Next</button>
+          </>
+        )}
 
-          <div>
-            <label>Time Estimate (hours)</label>
-            <input
-              type="number"
-              value={form.time_estimate}
-              onChange={(e) => setForm({ ...form, time_estimate: e.target.value })}
-              placeholder="e.g., 4.5"
-              style={{ width: '100%', padding: '0.5rem' }}
-              required
-            />
-          </div>
+        {step === 2 && (
+          <>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label>Time Estimate (hours)</label>
+                <input
+                  type="number"
+                  value={form.time_estimate}
+                  onChange={(e) => setForm({ ...form, time_estimate: e.target.value })}
+                  placeholder="e.g., 4.5"
+                  style={{ width: '100%', padding: '0.5rem' }}
+                  required
+                />
+              </div>
 
-          <div>
-            <label>Deadline</label>
-            <input
-              type="datetime-local"
-              value={form.deadline}
-              onChange={(e) => setForm({ ...form, deadline: e.target.value })}
-              required
-              style={{ width: '100%', padding: '0.5rem' }}
-            />
-          </div>
+              <div>
+                <label>Deadline</label>
+                <input
+                  type="datetime-local"
+                  value={form.deadline}
+                  onChange={(e) => setForm({ ...form, deadline: e.target.value })}
+                  required
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
 
-          <div>
-            <label>Start Date</label>
-            <input
-              type="date"
-              value={form.start_date}
-              onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-              required
-              style={{ width: '100%', padding: '0.5rem' }}
-            />
-          </div>
+              <div>
+                <label>Start Date</label>
+                <input
+                  type="date"
+                  value={form.start_date}
+                  onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                  required
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
 
-          {renderTypeSelector()}
+              {renderTypeSelector()}
 
-          {taskType === 'project' && (
-            <div>
-              <label>Select Project</label>
-              <select
-                value={form.project_id || ''}
-                onChange={(e) => setForm({ ...form, project_id: Number(e.target.value) })}
-                required
-                style={{ width: '100%', padding: '0.5rem' }}
+              {taskType === 'project' && (
+                <div>
+                  <label>Select Project</label>
+                  <select
+                    value={form.project_id || ''}
+                    onChange={(e) => setForm({ ...form, project_id: Number(e.target.value) })}
+                    required
+                    style={{ width: '100%', padding: '0.5rem' }}
+                  >
+                    <option value="" disabled>Select a project</option>
+                    {projects.map(p => (
+                      <option key={p.project_id} value={p.project_id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {taskType === 'area' && (
+                <div>
+                  <label>Select Area</label>
+                  <select
+                    value={form.area_id || ''}
+                    onChange={(e) => setForm({ ...form, area_id: Number(e.target.value) })}
+                    required
+                    style={{ width: '100%', padding: '0.5rem' }}
+                  >
+                    <option value="" disabled>Select an area</option>
+                    {areas.map(a => (
+                      <option key={a.area_id} value={a.area_id}>{a.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label>Importance: {form.importance}</label>
+                  <FaQuestionCircle onClick={() => setShowHelp(true)} title="What do these scores mean?" style={{ color: '#555', cursor: 'pointer' }} />
+                </div>
+                <input
+                  type="range"
+                  min={1} max={10}
+                  value={form.importance}
+                  onChange={(e) => setForm({ ...form, importance: +e.target.value })}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div>
+                <label>Urgency: {form.urgency}</label>
+                <input
+                  type="range"
+                  min={1} max={10}
+                  value={form.urgency}
+                  onChange={(e) => setForm({ ...form, urgency: +e.target.value })}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <button
+                onClick={handleSubmit}
+                disabled={isSubmitDisabled || loading}
+                style={{
+                  alignSelf: 'flex-end',
+                  padding: '0.5rem 1rem',
+                  background: isSubmitDisabled ? '#aaa' : '#333',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: isSubmitDisabled ? 'not-allowed' : 'pointer',
+                  opacity: isSubmitDisabled ? 0.6 : 1
+                }}
               >
-                <option value="" disabled>Select a project</option>
-                {projects.map(p => (
-                  <option key={p.project_id} value={p.project_id}>{p.name}</option>
-                ))}
-              </select>
+                {loading ? 'Saving…' : (request ? 'Accept and Delegate' : 'Create Task')}
+              </button>
             </div>
-          )}
-
-          {taskType === 'area' && (
-            <div>
-              <label>Select Area</label>
-              <select
-                value={form.area_id || ''}
-                onChange={(e) => setForm({ ...form, area_id: Number(e.target.value) })}n                required
-                style={{ width: '100%', padding: '0.5rem' }}
-              >
-                <option value="" disabled>Select an area</option>
-                {areas.map(a => (
-                  <option key={a.area_id} value={a.area_id}>{a.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label>Importance: {form.importance}</label>
-              <FaQuestionCircle onClick={() => setShowHelp(true)} title="What do these scores mean?" style={{ color: '#555', cursor: 'pointer' }} />
-            </div>
-            <input
-              type="range"
-              min={1} max={10}
-              value={form.importance}
-              onChange={(e) => setForm({ ...form, importance: +e.target.value })}
-              style={{ width: '100%' }}
-            />
-          </div>
-
-          <div>
-            <label>Urgency: {form.urgency}</label>
-            <input
-              type="range"
-              min={1} max={10}
-              value={form.urgency}
-              onChange={(e) => setForm({ ...form, urgency: +e.target.value })}
-              style={{ width: '100%' }}
-            />
-          </div>
-
-          <button
-            onClick={handleSubmit}
-            disabled={isSubmitDisabled || loading}
-            style={{
-              alignSelf: 'flex-end',
-              padding: '0.5rem 1rem',
-              background: isSubmitDisabled ? '#aaa' : '#333',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: isSubmitDisabled ? 'not-allowed' : 'pointer',
-              opacity: isSubmitDisabled ? 0.6 : 1
-            }}
-          >
-            {loading ? 'Saving…' : 'Create Task'}
-          </button>
-        </div>
+          </>
+        )}
 
         <EisenhowerHelpModal visible={showHelp} onClose={() => setShowHelp(false)} />
       </div>

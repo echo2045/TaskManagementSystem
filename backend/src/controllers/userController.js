@@ -218,6 +218,64 @@ async function getUserArchivedTasks(req, res) {
   }
 }
 
+async function getCurrentTask(req, res) {
+  const { id } = req.params;
+
+  try {
+      const result = await pool.query(
+          `SELECT
+              t.task_id,
+              t.title,
+              t.time_estimate,
+              ws.start_time,
+              t.deadline
+           FROM work_sessions ws
+           JOIN tasks t ON ws.task_id = t.task_id
+           WHERE ws.user_id = $1 AND ws.end_time IS NULL`,
+          [id]
+      );
+
+      if (result.rows.length > 0) {
+          const currentTask = result.rows[0];
+          // If deadline passed, still return the task, but it's considered overdue
+          res.json(currentTask);
+      } else {
+          res.json(null); // No active task
+      }
+  } catch (err) {
+      console.error('Error fetching current task:', err.message);
+      res.status(500).json({ error: 'Failed to fetch current task.' });
+  }
+}
+
+async function getWorkHistory(req, res) {
+  const { userId } = req.params;
+
+  try {
+      const result = await pool.query(
+          `SELECT
+             ws.session_id,
+             ws.user_id,
+             ws.start_time,
+             ws.end_time,
+             t.task_id,
+             t.title,
+             t.time_estimate,
+             EXTRACT(EPOCH FROM (COALESCE(ws.end_time, CURRENT_TIMESTAMP) - ws.start_time))/3600 AS hours_spent
+           FROM work_sessions ws
+           JOIN tasks t ON ws.task_id = t.task_id
+           WHERE ws.user_id = $1
+           ORDER BY ws.start_time DESC`,
+          [userId]
+      );
+
+      res.json(result.rows);
+  } catch (err) {
+      console.error('Error fetching work history:', err.message);
+      res.status(500).json({ error: 'Failed to fetch work history.' });
+  }
+}
+
 module.exports = {
   getAllUsers,
   getUserById,
@@ -229,5 +287,7 @@ module.exports = {
   unassignSupervisee,
   changePassword,
   getUserTasks,
-  getUserArchivedTasks
+  getUserArchivedTasks,
+  getCurrentTask,
+  getWorkHistory
 };

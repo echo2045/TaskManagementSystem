@@ -16,13 +16,23 @@ export default function SupervisorAllocation({ currentUser }) {
 
   // Load all users and the selected supervisor's team
   useEffect(() => {
-    getUsers().then(setAllUsers).catch(console.error);
+    console.log('Fetching all users...');
+    getUsers()
+      .then(data => {
+        setAllUsers(data);
+        console.log('All users fetched:', data);
+      })
+      .catch(console.error);
     loadTeam(supervisor.user_id);
   }, [supervisor.user_id]);
 
   const loadTeam = supervisorId => {
+    console.log('Loading team for supervisor:', supervisorId);
     getSupervisees(supervisorId)
-      .then(setTeam)
+      .then(data => {
+        setTeam(data);
+        console.log('Team loaded:', data);
+      })
       .catch(console.error);
   };
 
@@ -31,37 +41,50 @@ export default function SupervisorAllocation({ currentUser }) {
     .filter(u => u.user_id !== supervisor.user_id)
     .filter(u => !team.some(m => m.user_id === u.user_id))
     .filter(u => {
-      switch (supervisor.role) {
-        case 'member':
-          return false;
-        case 'team_lead':
-          return u.role === 'member';
-        case 'manager':
-          return true;
-        case 'hr':
-          return u.role !== 'hr';
-        default:
-          return false;
-      }
+      const isAllowedByRole = (() => {
+        switch (supervisor.role) {
+          case 'member':
+            return false;
+          case 'team_lead':
+            return u.role === 'member';
+          case 'manager':
+            return true;
+          case 'hr':
+            return u.role !== 'hr';
+          default:
+            return false;
+        }
+      })();
+      return isAllowedByRole;
     })
     .filter(u =>
       u.full_name.toLowerCase().includes(search.toLowerCase())
     );
+  console.log('Available to Assign:', available);
 
   // Filter “Team Members”
   const filteredTeam = team.filter(u =>
     u.full_name.toLowerCase().includes(teamSearch.toLowerCase())
   );
+  console.log('Filtered Team:', filteredTeam);
 
   const handleAdd = u => {
+    console.log('Attempting to add supervisee:', u.user_id, 'to supervisor:', supervisor.user_id);
     assignSupervisee(supervisor.user_id, u.user_id)
-      .then(() => loadTeam(supervisor.user_id))
+      .then(() => {
+        console.log('Supervisee added, reloading team...');
+        loadTeam(supervisor.user_id);
+      })
       .catch(console.error);
   };
 
   const handleRemove = u => {
+    console.log('Attempting to remove supervisee:', u.user_id, 'from supervisor:', supervisor.user_id);
     unassignSupervisee(supervisor.user_id, u.user_id)
-      .then(() => loadTeam(supervisor.user_id))
+      .then(() => {
+        console.log('Supervisee removed, reloading team...');
+        loadTeam(supervisor.user_id);
+      })
       .catch(console.error);
   };
 
@@ -83,8 +106,10 @@ export default function SupervisorAllocation({ currentUser }) {
         <select
           value={supervisor.user_id}
           onChange={e => {
-            const u = allUsers.find(x => x.user_id === +e.target.value);
-            setSupervisor(u || currentUser);
+            const selectedUserId = +e.target.value;
+            const selectedUser = allUsers.find(x => x.user_id === selectedUserId);
+            setSupervisor(selectedUser || currentUser); // Ensure a valid user is always selected
+            console.log('Selected supervisor changed to:', selectedUser || currentUser);
           }}
           style={{ padding: '0.5rem', minWidth: '200px' }}
         >
