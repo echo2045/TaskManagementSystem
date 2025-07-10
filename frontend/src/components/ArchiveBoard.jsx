@@ -31,7 +31,10 @@ export default function ArchiveBoard({ filterUser, currentUser }) {
 
   const fetchArchive = useCallback(() => {
     getArchivedTasksForUser(viewingUserId)
-      .then(setTasks)
+      .then(data => {
+        console.log("Tasks fetched for ArchiveBoard:", data);
+        setTasks(data);
+      })
       .catch(console.error);
   }, [viewingUserId]);
 

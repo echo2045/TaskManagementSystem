@@ -36,6 +36,7 @@ export default function TaskBoard({ filterUser }) {
   const fetchTasks = useCallback(() => {
     getTasksForUser(viewingUserId)
       .then(data => {
+        console.log("Tasks fetched for TaskBoard:", data);
         setTasks(Array.isArray(data) ? data : []);
       })
       .catch(err => {

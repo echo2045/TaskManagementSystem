@@ -30,6 +30,7 @@ export default function TaskCard({
   showProjectNameInstead = false,
   showAreaNameInstead = false
 }) {
+  console.log("TaskCard received task:", JSON.stringify(task, null, 2));
   const { user: authUser } = useContext(AuthContext);
   const socket = useSocket();
   const isAuthOwner = authUser.user_id === task.owner_id;
@@ -39,10 +40,17 @@ export default function TaskCard({
   const [completionState, setCompletionState] = useState(null);
   const [currentActiveTask, setCurrentActiveTask] = useState(null);
   const [isWorkingActionLoading, setIsWorkingActionLoading] = useState(false);
+  const [totalHoursSpent, setTotalHoursSpent] = useState(Number(task.total_hours_spent_for_user) || 0);
+  const [timeDifference, setTimeDifference] = useState(Number(task.time_difference_for_user) || null);
 
   useEffect(() => {
     getAssignees(task.task_id).then(setAssignees).catch(console.error);
   }, [task.task_id]);
+
+  useEffect(() => {
+    setTotalHoursSpent(Number(task.total_hours_spent_for_user) || 0);
+    setTimeDifference(Number(task.time_difference_for_user) || null);
+  }, [task.total_hours_spent_for_user, task.time_difference_for_user]);
 
   useEffect(() => {
     if (!socket) return;
@@ -82,6 +90,19 @@ export default function TaskCard({
       socket.off('workSessionUpdate', handleWorkSessionUpdate);
     };
   }, [socket, authUser.user_id, task]);
+
+  const isWorkingOnThisTask = currentActiveTask && currentActiveTask.task_id === task.task_id;
+
+  useEffect(() => {
+    let interval;
+    if (isWorkingOnThisTask) {
+      // Poll for updates every 30 seconds to refresh the time difference
+      interval = setInterval(() => {
+        onStatusChange?.();
+      }, 30000);
+    }
+    return () => clearInterval(interval);
+  }, [isWorkingOnThisTask, onStatusChange]);
 
   const viewIsOwner = viewingUserId === task.owner_id;
   const viewIsAssignee = assignees.some(a => a.user_id === viewingUserId);
@@ -242,6 +263,7 @@ export default function TaskCard({
       setCurrentActiveTask(null); // Optimistic update
       // Fetch actual current task in background to ensure consistency
       getCurrentTask(authUser.user_id).then(setCurrentActiveTask).catch(console.error);
+      onStatusChange?.();
     } catch (error) {
       console.error("Error stopping work session:", error);
       alert(error.response?.data?.error || "Failed to stop work session.");
@@ -254,7 +276,6 @@ export default function TaskCard({
     ? task.status === 'completed'
     : isAssigneeCompleted;
 
-  const isWorkingOnThisTask = currentActiveTask && currentActiveTask.task_id === task.task_id;
   const isWorkingOnAnotherTask = currentActiveTask && currentActiveTask.task_id !== task.task_id;
 
   return (
@@ -273,7 +294,8 @@ export default function TaskCard({
           flexDirection: 'row',
           alignItems: 'center',
           cursor: 'pointer',
-          gap: '1rem'
+          gap: '1rem',
+          minWidth: '900px' // Added minWidth to prevent truncation
         }}
       >
         <div style={{
@@ -300,19 +322,15 @@ export default function TaskCard({
             <span className="task-title" style={{
               fontWeight: 'bold',
               whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              width: '220px' /* Increased from 180px */
+              flex: 1
             }}>
               {task.title}
             </span>
             <span style={{
               whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
+              flex: 1,
               fontSize: '1rem',
               color: '#555',
-              width: '240px' /* Increased from 200px */
             }}>
               Owner: {task.owner_name}
             </span>
@@ -320,9 +338,7 @@ export default function TaskCard({
               fontSize: '1rem',
               color: '#555',
               whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              width: '160px' /* Increased from 135px */
+              flex: 1
             }}>
               Start:{' '}
               {isEditableStartDate ? (
@@ -345,38 +361,30 @@ export default function TaskCard({
                 getStartDate()
               )}
             </span>
-            {((viewIsAssignee && assigneeEntry?.assigned_time_estimate) || task.time_estimate) && (
+            {((viewIsAssignee && assigneeEntry?.assigned_time_estimate != null) || (!viewIsAssignee && task.time_estimate != null)) && (
               <span style={{
                 fontSize: '1rem',
                 color: '#555',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                width: '160px' /* Increased from 135px */
+                flex: 1
               }}>
                 Est: {viewIsAssignee && assigneeEntry?.assigned_time_estimate ? assigneeEntry.assigned_time_estimate : task.time_estimate}h
-              </span>
-            )}
-            {isCompleted && viewIsAssignee && assigneeEntry?.time_difference !== undefined && (
-              <span style={{
-                fontSize: '1rem',
-                color: assigneeEntry.time_difference >= 0 ? 'green' : 'red',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                width: '160px' /* Increased from 135px */
-              }}>
-                Diff: {assigneeEntry.time_difference}h
+                {totalHoursSpent > 0.001 && timeDifference !== null && (
+                  <span style={{
+                    color: timeDifference >= 0 ? 'green' : 'red',
+                    marginLeft: '0.5rem',
+                    minWidth: 'auto'
+                  }}>
+                    (Diff: {timeDifference.toFixed(2)}h)
+                  </span>
+                )}
               </span>
             )}
             {extraName && (
               <span style={{
                 whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
+                flex: 1,
                 fontSize: '0.8rem',
                 color: '#777',
-                width: '150px' /* Increased from 130px */
               }}>
                 {truncate(extraName, 22)}
               </span>
@@ -384,7 +392,13 @@ export default function TaskCard({
           </div>
         </div>
 
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          justifyContent: 'flex-end',
+          flex: 2
+        }}>
           {!showProjectNameInstead && !showAreaNameInstead && scopeTag && (
             <span style={{
               fontSize: '0.7rem',
@@ -396,15 +410,6 @@ export default function TaskCard({
               {scopeTag}
             </span>
           )}
-        </div>
-
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem',
-          justifyContent: 'flex-end',
-          flex: 2
-        }}>
           {((!isArchived && !isCompleted) || (isArchived && archiveBadge?.text === 'Incomplete')) && (isAuthOwner || viewIsAssignee) && authUser.user_id === viewingUserId && (
             // Show work buttons if not completed, regardless of archive status
             // The `isArchived` prop is used to determine if the task is in the archive view,

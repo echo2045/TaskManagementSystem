@@ -12,7 +12,7 @@ module.exports = (io) => {
             t.importance, t.urgency, t.status, t.owner_id,
             t.start_date, t.created_at, t.time_estimate,
             t.project_id, p.name AS project_name,
-            t.area_id, a.name AS area_name,
+            t.area_id, a.name AS area_id,
             u.full_name AS owner_name
           FROM tasks t
           JOIN users u ON t.owner_id = u.user_id
@@ -31,6 +31,7 @@ module.exports = (io) => {
             ta.urgency AS assignee_urgency,
             ta.is_completed,
             ta.start_date,
+            ta.assigned_time_estimate,
             d.full_name AS delegated_by
           FROM task_assignments ta
           JOIN users u ON ta.assignee_id = u.user_id
@@ -45,15 +46,48 @@ module.exports = (io) => {
             full_name: row.full_name,
             delegated_by: row.delegated_by || null,
             importance: row.assignee_importance,
-            urgency: row.assignee_urgency, // Corrected from row.urgency
+            urgency: row.assignee_urgency,
             is_completed: row.is_completed,
-            start_date: row.start_date
+            start_date: row.start_date,
+            assigned_time_estimate: row.assigned_time_estimate
           });
         });
 
-        const enriched = tasks.map(t => ({
-          ...t,
-          assignees: grouped[t.task_id] || []
+        const enriched = await Promise.all(tasks.map(async t => {
+          let total_hours_spent_for_user = 0;
+          let time_difference_for_user = null;
+
+          const task_assignees = grouped[t.task_id] || [];
+          const assignee_entry = task_assignees.find(a => a.user_id === req.user.user_id);
+
+          const isOwner = t.owner_id === req.user.user_id;
+          const isAssignee = !!assignee_entry;
+
+          if (isOwner || isAssignee) {
+            const workSessionsResult = await pool.query(
+              `SELECT SUM(EXTRACT(EPOCH FROM (COALESCE(end_time, CURRENT_TIMESTAMP) - start_time))) / 3600 AS total_hours
+               FROM work_sessions
+               WHERE task_id = $1 AND user_id = $2`,
+              [t.task_id, req.user.user_id]
+            );
+            total_hours_spent_for_user = workSessionsResult.rows[0]?.total_hours || 0;
+
+            let effective_time_estimate = t.time_estimate;
+            if (isAssignee && assignee_entry.assigned_time_estimate != null) {
+              effective_time_estimate = assignee_entry.assigned_time_estimate;
+            }
+
+            if (effective_time_estimate !== null) {
+              time_difference_for_user = effective_time_estimate - total_hours_spent_for_user;
+            }
+          }
+
+          return {
+            ...t,
+            assignees: task_assignees,
+            total_hours_spent_for_user: total_hours_spent_for_user,
+            time_difference_for_user: time_difference_for_user
+          };
         }));
 
         res.json(enriched);
@@ -105,6 +139,7 @@ module.exports = (io) => {
             ta.urgency AS assignee_urgency,
             ta.is_completed,
             ta.start_date,
+            ta.assigned_time_estimate,
             d.full_name AS delegated_by
           FROM task_assignments ta
           JOIN users u ON ta.assignee_id = u.user_id
@@ -119,9 +154,10 @@ module.exports = (io) => {
             full_name: row.full_name,
             delegated_by: row.delegated_by || null,
             importance: row.assignee_importance,
-            urgency: row.assignee_urgency, // Corrected from row.urgency
+            urgency: row.assignee_urgency,
             is_completed: row.is_completed,
-            start_date: row.start_date
+            start_date: row.start_date,
+            assigned_time_estimate: row.assigned_time_estimate
           });
         });
 
@@ -131,9 +167,41 @@ module.exports = (io) => {
           return isOwner || isAssigned;
         });
 
-        const enriched = filtered.map(t => ({
-          ...t,
-          assignees: assigneesByTask[t.task_id] || []
+        const enriched = await Promise.all(filtered.map(async t => {
+          let total_hours_spent_for_user = 0;
+          let time_difference_for_user = null;
+
+          const task_assignees = assigneesByTask[t.task_id] || [];
+          const assignee_entry = task_assignees.find(a => a.user_id === Number(user_id));
+
+          const isOwner = t.owner_id === Number(user_id);
+          const isAssigned = !!assignee_entry;
+
+          if (isOwner || isAssigned) {
+            const workSessionsResult = await pool.query(
+              `SELECT SUM(EXTRACT(EPOCH FROM (COALESCE(end_time, CURRENT_TIMESTAMP) - start_time))) / 3600 AS total_hours
+               FROM work_sessions
+               WHERE task_id = $1 AND user_id = $2`,
+              [t.task_id, user_id]
+            );
+            total_hours_spent_for_user = workSessionsResult.rows[0]?.total_hours || 0;
+
+            let effective_time_estimate = t.time_estimate;
+            if (isAssigned && assignee_entry.assigned_time_estimate != null) {
+              effective_time_estimate = assignee_entry.assigned_time_estimate;
+            }
+
+            if (effective_time_estimate !== null) {
+              time_difference_for_user = effective_time_estimate - total_hours_spent_for_user;
+            }
+          }
+
+          return {
+            ...t,
+            assignees: task_assignees,
+            total_hours_spent_for_user: total_hours_spent_for_user,
+            time_difference_for_user: time_difference_for_user
+          };
         }));
 
         res.json(enriched);
@@ -492,7 +560,6 @@ module.exports = (io) => {
     startWorkSession: async (req, res) => {
         const { taskId } = req.params;
         const { user_id } = req.user;
-        console.log(`Attempting to start work session for user ${user_id} on task ${taskId}`);
         try {
             // End any existing work session for the user, this allows switching tasks
             await pool.query(
@@ -508,9 +575,7 @@ module.exports = (io) => {
                  RETURNING *`,
                 [taskId, user_id]
             );
-            console.log('Work session started successfully:', result.rows[0]);
 
-            // Emit WebSocket event
             io.emit('workSessionUpdate', { userId: user_id, taskId: taskId, type: 'start' });
 
             res.status(201).json(result.rows[0]);
