@@ -284,8 +284,8 @@ export default function App() {
           position: 'fixed',
           bottom: '20px',
           left: '20px',
-          backgroundColor: sidebarOpen ? 'white' : 'black',
-          color: sidebarOpen ? 'black' : 'white',
+          backgroundColor: sidebarOpen ? '#FAFAFA' : '#2E2E2E',
+          color: sidebarOpen ? '#2E2E2E' : '#FAFAFA',
           borderRadius: '50%',
           width: '50px',
           height: '50px',
@@ -296,7 +296,7 @@ export default function App() {
           cursor: 'pointer',
           boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.2)',
           zIndex: 1000,
-          transition: 'left 0.3s ease, background-color 0.3s ease, color 0.3s ease'
+          transition: 'background-color 0.3s ease, color 0.3s ease'
         }}
       >
         ?
