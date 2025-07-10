@@ -40,16 +40,18 @@ export default function App() {
 
   const links = [
     { key: 'tasks', label: 'Tasks' },
-    { key: 'archive', label: 'Archive' },
     { key: 'projects', label: 'Projects' },
     { key: 'areas', label: 'Areas' },
-    ...(user.role === 'manager' || user.role === 'hr'
-      ? [
-          { key: 'allocate', label: 'Allocate Team' },
-          { key: 'addUser', label: 'Add User' },
-          { key: 'deleteUser', label: 'Delete User' }
-        ]
-      : []),
+    { key: 'archive', label: 'Archive' },
+  ];
+
+  const adminLinks = (user.role === 'manager' || user.role === 'hr') ? [
+    { key: 'allocate', label: 'Allocate Teams' },
+    { key: 'addUser', label: 'Add User' },
+    { key: 'deleteUser', label: 'Delete User' }
+  ] : [];
+
+  const userSettingsLinks = [
     { key: 'updateUser', label: 'Update User Info' },
     { key: 'changePassword', label: 'Change Password' }
   ];
@@ -217,6 +219,44 @@ export default function App() {
                   {l.label}
                 </div>
               ))}
+              <hr style={{ margin: '0.5rem 0', borderTop: '1px solid #eee' }} />
+              {adminLinks.length > 0 && (
+                <>
+                  {adminLinks.map(l => (
+                    <div
+                      key={l.key}
+                      onClick={() => setView(l.key)}
+                      style={{
+                        cursor: 'pointer',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '4px',
+                        background: view === l.key ? '#666666' : 'transparent',
+                        color: view === l.key ? '#fff' : '#000',
+                        fontWeight: view === l.key ? 'bold' : 'normal'
+                      }}
+                    >
+                      {l.label}
+                    </div>
+                  ))}
+                  <hr style={{ margin: '0.5rem 0', borderTop: '1px solid #eee' }} />
+                </>
+              )}
+              {userSettingsLinks.map(l => (
+                <div
+                  key={l.key}
+                  onClick={() => setView(l.key)}
+                  style={{
+                    cursor: 'pointer',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '4px',
+                    background: view === l.key ? '#666666' : 'transparent',
+                    color: view === l.key ? '#fff' : '#000',
+                    fontWeight: view === l.key ? 'bold' : 'normal'
+                  }}
+                >
+                  {l.label}
+                </div>
+              ))}
             </nav>
             <div style={{ flex: 1 }} />
             <button
@@ -225,7 +265,8 @@ export default function App() {
                 padding: '0.5rem 1rem',
                 border: '1px solid #555',
                 borderRadius: '4px',
-                background: 'transparent',
+                background: '#dc3545', /* Red color */
+                color: '#fff',
                 cursor: 'pointer'
               }}
             >
