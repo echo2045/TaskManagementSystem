@@ -102,18 +102,9 @@ export default function TaskBoard({ filterUser }) {
       {canCreate && (
         <>
           {/* Page Title */}
-          <h2 style={{ padding: '1rem 1rem 0rem', margin: '0', fontSize: '2rem' }}>Tasks</h2>
 
           {/* Task Entry */}
           <div style={{ display: 'flex', alignItems: 'center', padding: '0 1rem', marginTop: '0.25rem' }}>
-            <h3 style={{ marginRight: '0.5rem', fontSize: '1.5rem', fontWeight: 'bold' }}>Task Entry</h3>
-            <FaQuestionCircle
-              size={18}
-              color="#888"
-              style={{ cursor: 'pointer' }}
-              onClick={() => setShowHelp(true)}
-              title="Eisenhower Matrix Help"
-            />
           </div>
 
           {/* Create Button */}
@@ -184,7 +175,6 @@ export default function TaskBoard({ filterUser }) {
       {/* Filters Section */}
       <div style={{ display: 'flex', gap: '1.5rem', padding: '0 1rem', marginBottom: '1rem', alignItems: 'flex-end' }}>
         <div style={{ flex: 2, display: 'flex', flexDirection: 'column' }}>
-          <label style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Search Tasks</label>
           <input
             type="text"
             placeholder="Search tasks…"
