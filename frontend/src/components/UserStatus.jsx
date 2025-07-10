@@ -172,24 +172,29 @@ export default function UserStatus({ selectedUser, currentUser }) {
 }
 
 const statusContainer = {
-    padding: '1rem',
-    backgroundColor: '#f0f0f0',
-    borderRadius: '8px',
+    padding: '1.5rem',
+    backgroundColor: '#FFFFFF',
+    borderRadius: '12px',
     margin: '1rem 0',
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center'
+    alignItems: 'center',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+    gap: '1rem'
 };
 
 const statusText = {
-    fontSize: '1rem'
+    fontSize: '1.1rem',
+    color: '#333333'
 };
 
 const historyButton = {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#4caf50',
+    padding: '0.75rem 1.5rem',
+    backgroundColor: '#007bff',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer'
+    borderRadius: '8px',
+    cursor: 'pointer',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    transition: 'background-color 0.3s ease, box-shadow 0.3s ease'
 };
