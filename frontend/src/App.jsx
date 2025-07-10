@@ -14,12 +14,14 @@ import Areas from './components/Areas';
 import DeleteUser from './components/DeleteUser';
 import UpdateUser from './components/UpdateUser';
 import UserStatus from './components/UserStatus';
+import EisenhowerHelpModal from './components/EisenhowerHelpModal';
 
 export default function App() {
   const { user, logout } = useContext(AuthContext);
   const [selectedUser, setSelectedUser] = useState(null);
   const [view, setView] = useState('tasks');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isHelpModalVisible, setHelpModalVisible] = useState(false);
 
   if (!user) return <Login />;
 
@@ -275,6 +277,35 @@ export default function App() {
           </aside>
         </div>
       </div>
+
+      <div
+        onClick={() => setHelpModalVisible(true)}
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          left: '20px',
+          backgroundColor: sidebarOpen ? 'white' : 'black',
+          color: sidebarOpen ? 'black' : 'white',
+          borderRadius: '50%',
+          width: '50px',
+          height: '50px',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          fontSize: '2rem',
+          cursor: 'pointer',
+          boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.2)',
+          zIndex: 1000,
+          transition: 'left 0.3s ease, background-color 0.3s ease, color 0.3s ease'
+        }}
+      >
+        ?
+      </div>
+
+      <EisenhowerHelpModal
+        visible={isHelpModalVisible}
+        onClose={() => setHelpModalVisible(false)}
+      />
     </div>
   );
 }
