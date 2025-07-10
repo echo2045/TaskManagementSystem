@@ -34,9 +34,22 @@ export default function TaskSessionDetailsModal({ session, task, owner, onClose 
 
     return (
         <div style={overlay}>
-            <div style={{ ...modal, background: backgroundColor, border: `2px solid ${borderColor}` }}>
+            <div style={{ ...modal, background: '#f0f0f0', border: 'none' }}>
                 <button onClick={onClose} style={closeBtn}>×</button>
                 <h2>{task.title}</h2>
+                <span style={{
+                    display: 'inline-block',
+                    background: interiorColors[taskColorType],
+                    border: `2px solid ${borderColors[taskColorType]}`,
+                    borderRadius: '16px',
+                    padding: '0.5rem 1rem',
+                    color: borderColors[taskColorType],
+                    fontWeight: 'bold',
+                    marginBottom: '1rem',
+                    textTransform: 'capitalize'
+                }}>
+                    {taskColorType}
+                </span>
                 {owner && <p><strong>Task Owner:</strong> {owner.username}</p>}
                 <p><strong>Start Time:</strong> {sessionStart.toLocaleString()}</p>
                 <p><strong>End Time:</strong> {sessionEnd ? sessionEnd.toLocaleString() : 'In Progress'}</p>
@@ -71,7 +84,8 @@ const modal = {
     width: '400px',
     maxHeight: '80vh',
     overflowY: 'auto',
-    boxSizing: 'border-box'
+    boxSizing: 'border-box',
+    background: '#f0f0f0'
 };
 
 const closeBtn = {

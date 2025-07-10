@@ -263,7 +263,8 @@ const modalContent = {
   width: '520px',
   maxHeight: '85vh',
   overflow: 'hidden',
-  boxSizing: 'border-box'
+  boxSizing: 'border-box',
+  background: '#f0f0f0'
 };
 
 const helpBtn = {

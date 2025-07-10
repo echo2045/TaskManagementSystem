@@ -132,7 +132,8 @@ const modalContent = {
   width: '500px',
   maxHeight: '85vh',
   overflow: 'hidden',
-  boxSizing: 'border-box'
+  boxSizing: 'border-box',
+  background: '#f0f0f0'
 };
 
 const closeBtn = {

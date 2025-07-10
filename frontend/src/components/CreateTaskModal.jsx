@@ -303,11 +303,11 @@ const overlay = {
 
 const modal = {
   position: 'relative',
-  background: '#cccccc',
+  background: '#f0f0f0',
   padding: '2.5rem',
   borderRadius: '10px',
   width: '500px',
-  boxSizing: 'border-box'
+  boxSizing: 'border-sizing'
 };
 
 const closeBtn = {

@@ -91,7 +91,7 @@ export default function TaskDetailsModal({
 
   return (
     <div style={overlay}>
-      <div style={{ ...modal, background: bgColor, border: `2px solid ${effectiveBorder}` }}>
+      <div style={{ ...modal, background: '#f0f0f0', border: 'none' }}>
         <button onClick={onClose} style={{ ...closeBtn, color: '#000' }}>×</button>
         {isOwner && (
           <button
@@ -113,6 +113,19 @@ export default function TaskDetailsModal({
         )}
 
         <h2 style={{ marginTop: 0 }}>{taskState.title}</h2>
+        <span style={{
+          display: 'inline-block',
+          background: interiorColors[type],
+          border: `2px solid ${borderColors[type]}`,
+          borderRadius: '16px',
+          padding: '0.5rem 1rem',
+          color: borderColors[type],
+          fontWeight: 'bold',
+          marginBottom: '1rem',
+          textTransform: 'capitalize'
+        }}>
+          {type}
+        </span>
         <p style={{ margin: '0.5rem 0' }}>
           <strong>Deadline:</strong> {new Date(taskState.deadline).toLocaleString()}
         </p>
@@ -261,7 +274,8 @@ const modal = {
   overflowY: 'auto',
   padding: '1.5rem',
   borderRadius: '8px',
-  boxSizing: 'border-box'
+  boxSizing: 'border-box',
+  background: '#f0f0f0'
 };
 
 const closeBtn = {

@@ -231,7 +231,7 @@ const overlay = {
 
 const modal = {
     position: 'relative',
-    background: '#fff',
+    background: '#f0f0f0',
     padding: '2rem',
     borderRadius: '8px',
     width: '90%',

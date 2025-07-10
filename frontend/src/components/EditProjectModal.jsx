@@ -46,7 +46,7 @@ const overlay = {
 };
 
 const modal = {
-  background: '#fff',
+  background: '#f0f0f0',
   padding: '2rem',
   borderRadius: '8px',
   width: '400px',

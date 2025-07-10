@@ -74,7 +74,7 @@ const overlay = {
 };
 
 const modal = {
-  background: '#fff',
+  background: '#f0f0f0',
   padding: '2.5rem',
   borderRadius: '12px',
   width: '700px',
