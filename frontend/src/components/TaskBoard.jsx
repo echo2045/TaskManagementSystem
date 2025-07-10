@@ -101,56 +101,95 @@ export default function TaskBoard({ filterUser }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {canCreate && (
-        <>
-          {/* Page Title */}
-
-          {/* Task Entry */}
-          <div style={{ display: 'flex', alignItems: 'center', padding: '0 1rem', marginTop: '0.25rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', padding: '0 1rem 1rem', alignItems: 'flex-end' }}>
+          <div style={{ flex: 2, display: 'flex', flexDirection: 'column' }}>
+            <input
+              type="text"
+              placeholder="Search tasks…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ padding: '0.3rem' }}
+            />
           </div>
-
-          {/* Create Button */}
-          <div style={{ padding: '0 1rem 1rem', display: 'flex', gap: '1rem' }}>
-            <button
-              onClick={() => setModalOpen(true)}
-              style={{
-                padding: '0.5rem 1rem',
-                background: '#007bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <label style={{ fontSize: '0.8rem' }}>Type</label>
+            <select
+              value={typeFilter}
+              onChange={e => setTypeFilter(e.target.value)}
+              style={{ padding: '0.3rem' }}
             >
-              Create Task
-            </button>
-            <button
-              onClick={() => setRequestModalOpen(true)}
-              style={{
-                padding: '0.5rem 1rem',
-                background: '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              Request Task
-            </button>
+              <option value="">All</option>
+              <option value="do">Do</option>
+              <option value="schedule">Schedule</option>
+              <option value="delegate">Delegate</option>
+              <option value="eliminate">Eliminate</option>
+            </select>
           </div>
-
-          <CreateTaskModal
-            visible={modalOpen}
-            onClose={() => { setModalOpen(false); fetchTasks(); }}
-            ownerId={user.user_id}
-          />
-          <RequestTaskModal
-            isOpen={requestModalOpen}
-            onClose={() => { setRequestModalOpen(false); fetchTasks(); }}
-            requesterId={user.user_id}
-          />
-          {showHelp && <EisenhowerHelpModal visible={true} onClose={() => setShowHelp(false)} />}
-        </>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <label style={{ fontSize: '0.8rem' }}>Date</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={e => setDateFilter(e.target.value)}
+                style={{ padding: '0.3rem', flex: 1 }}
+              />
+              <button onClick={() => setDateFilter('')} style={{ padding: '0 0.5rem', fontSize: '0.8rem' }}>Clear</button>
+            </div>
+          </div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <label style={{ fontSize: '0.8rem' }}>Group By</label>
+            <select
+              value={groupByStartDate ? 'start' : 'deadline'}
+              onChange={e => setGroupByStartDate(e.target.value === 'start')}
+              style={{ padding: '0.3rem' }}
+            >
+              <option value="deadline">Deadline</option>
+              <option value="start">Start Date</option>
+            </select>
+          </div>
+          <button
+            onClick={() => setModalOpen(true)}
+            style={{
+              padding: '0.3rem 0.6rem',
+              background: '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '0.8rem'
+            }}
+          >
+            Create Task
+          </button>
+          <button
+            onClick={() => setRequestModalOpen(true)}
+            style={{
+              padding: '0.3rem 0.6rem',
+              background: '#28a745',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '0.8rem'
+            }}
+          >
+            Request Task
+          </button>
+        </div>
       )}
+
+      <CreateTaskModal
+        visible={modalOpen}
+        onClose={() => { setModalOpen(false); fetchTasks(); }}
+        ownerId={user.user_id}
+      />
+      <RequestTaskModal
+        isOpen={requestModalOpen}
+        onClose={() => { setRequestModalOpen(false); fetchTasks(); }}
+        requesterId={user.user_id}
+      />
+      {showHelp && <EisenhowerHelpModal visible={true} onClose={() => setShowHelp(false)} />}
 
       {/* Eisenhower Matrix Capsules */}
       <div style={{ display: 'flex', gap: '0.5rem', padding: '0 1rem 1rem' }}>
@@ -171,56 +210,6 @@ export default function TaskBoard({ filterUser }) {
             {type}
           </div>
         ))}
-      </div>
-
-      {/* Filters Section */}
-      <div style={{ display: 'flex', gap: '1.5rem', padding: '0 1rem', marginBottom: '1rem', alignItems: 'flex-end' }}>
-        <div style={{ flex: 2, display: 'flex', flexDirection: 'column' }}>
-          <input
-            type="text"
-            placeholder="Search tasks…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ padding: '0.5rem' }}
-          />
-        </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <label style={{ fontSize: '0.9rem' }}>Type</label>
-          <select
-            value={typeFilter}
-            onChange={e => setTypeFilter(e.target.value)}
-            style={{ padding: '0.5rem' }}
-          >
-            <option value="">All</option>
-            <option value="do">Do</option>
-            <option value="schedule">Schedule</option>
-            <option value="delegate">Delegate</option>
-            <option value="eliminate">Eliminate</option>
-          </select>
-        </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <label style={{ fontSize: '0.9rem' }}>Date</label>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <input
-              type="date"
-              value={dateFilter}
-              onChange={e => setDateFilter(e.target.value)}
-              style={{ padding: '0.5rem', flex: 1 }}
-            />
-            <button onClick={() => setDateFilter('')} style={{ padding: '0 0.75rem' }}>Clear</button>
-          </div>
-        </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <label style={{ fontSize: '0.9rem' }}>Group By</label>
-          <select
-            value={groupByStartDate ? 'start' : 'deadline'}
-            onChange={e => setGroupByStartDate(e.target.value === 'start')}
-            style={{ padding: '0.5rem' }}
-          >
-            <option value="deadline">Deadline</option>
-            <option value="start">Start Date</option>
-          </select>
-        </div>
       </div>
 
       {/* Task List */}
