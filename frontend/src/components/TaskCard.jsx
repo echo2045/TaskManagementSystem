@@ -302,7 +302,7 @@ export default function TaskCard({
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              width: '180px'
+              width: '220px' /* Increased from 180px */
             }}>
               {task.title}
             </span>
@@ -312,7 +312,7 @@ export default function TaskCard({
               textOverflow: 'ellipsis',
               fontSize: '1rem',
               color: '#555',
-              width: '200px'
+              width: '240px' /* Increased from 200px */
             }}>
               Owner: {task.owner_name}
             </span>
@@ -322,7 +322,7 @@ export default function TaskCard({
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              width: '135px'
+              width: '160px' /* Increased from 135px */
             }}>
               Start:{' '}
               {isEditableStartDate ? (
@@ -338,7 +338,7 @@ export default function TaskCard({
                     borderRadius: '4px',
                     padding: '2px 4px',
                     background: '#fff',
-                    width: '125px'
+                    width: '150px' /* Increased from 125px */
                   }}
                 />
               ) : (
@@ -352,7 +352,7 @@ export default function TaskCard({
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                width: '135px'
+                width: '160px' /* Increased from 135px */
               }}>
                 Est: {viewIsAssignee && assigneeEntry?.assigned_time_estimate ? assigneeEntry.assigned_time_estimate : task.time_estimate}h
               </span>
@@ -364,7 +364,7 @@ export default function TaskCard({
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                width: '135px'
+                width: '160px' /* Increased from 135px */
               }}>
                 Diff: {assigneeEntry.time_difference}h
               </span>
@@ -376,7 +376,7 @@ export default function TaskCard({
                 textOverflow: 'ellipsis',
                 fontSize: '0.8rem',
                 color: '#777',
-                width: '130px'
+                width: '150px' /* Increased from 130px */
               }}>
                 {truncate(extraName, 22)}
               </span>
