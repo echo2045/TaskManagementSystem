@@ -36,7 +36,7 @@ export default function AreaDashboard() {
 
   const fetchAreas = async () => {
     try {
-      const data = await getAllAreas(true);
+      const data = await getAllAreas();
       setAreas(data);
     } catch (err) {
       console.error('Error loading area list', err);
@@ -165,7 +165,7 @@ export default function AreaDashboard() {
               return (
                 <TaskCard
                   key={t.task_id}
-                  task={{ ...t, owner_name: area?.creator_name || 'Unknown' }}
+                  task={t}
                   viewingUserId={user.user_id}
                   showAreaNameInstead={true}
                   onStatusChange={fetchTasks}

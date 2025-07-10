@@ -304,7 +304,6 @@ export default function TaskCard({
           gap: '0.75rem',
           flex: 3,
           minWidth: 0,
-          overflow: 'hidden'
         }}>
           <label className="custom-checkbox-container">
             <input
@@ -322,15 +321,19 @@ export default function TaskCard({
             <span className="task-title" style={{
               fontWeight: 'bold',
               whiteSpace: 'nowrap',
-              flex: 1
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              width: '220px' /* Increased from 180px */
             }}>
               {task.title}
             </span>
             <span style={{
               whiteSpace: 'nowrap',
-              flex: 1,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
               fontSize: '1rem',
               color: '#555',
+              width: '240px' /* Increased from 200px */
             }}>
               Owner: {task.owner_name}
             </span>
@@ -338,7 +341,9 @@ export default function TaskCard({
               fontSize: '1rem',
               color: '#555',
               whiteSpace: 'nowrap',
-              flex: 1
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              width: '160px' /* Increased from 135px */
             }}>
               Start:{' '}
               {isEditableStartDate ? (
@@ -365,7 +370,8 @@ export default function TaskCard({
               <span style={{
                 fontSize: '1rem',
                 color: '#555',
-                flex: 1
+                flex: 1,
+                whiteSpace: 'nowrap'
               }}>
                 Est: {viewIsAssignee && assigneeEntry?.assigned_time_estimate ? assigneeEntry.assigned_time_estimate : task.time_estimate}h
                 {totalHoursSpent > 0.001 && timeDifference !== null && (
@@ -382,9 +388,11 @@ export default function TaskCard({
             {extraName && (
               <span style={{
                 whiteSpace: 'nowrap',
-                flex: 1,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 fontSize: '0.8rem',
                 color: '#777',
+                width: '150px' /* Increased from 130px */
               }}>
                 {truncate(extraName, 22)}
               </span>

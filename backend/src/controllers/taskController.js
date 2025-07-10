@@ -12,7 +12,7 @@ module.exports = (io) => {
             t.importance, t.urgency, t.status, t.owner_id,
             t.start_date, t.created_at, t.time_estimate,
             t.project_id, p.name AS project_name,
-            t.area_id, a.name AS area_id,
+            t.area_id, a.name AS area_name,
             u.full_name AS owner_name
           FROM tasks t
           JOIN users u ON t.owner_id = u.user_id
