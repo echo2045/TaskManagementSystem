@@ -36,7 +36,7 @@ app.use('/api/auth', authRoutes);
 // Protected routes
 app.use('/api/users', authenticate, userRoutes);
 app.use('/api/tasks', taskRoutes);
-app.use('/api/notifications', authenticate, notificationRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // 🚧 TEMPORARILY allow public access to projects and areas
 app.use('/api/projects', projectRoutes); // 👈 No authenticate
