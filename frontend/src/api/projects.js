@@ -1,7 +1,7 @@
 // frontend/src/api/projects.js
 import axios from 'axios';
 
-const BASE_URL = 'http://192.168.10.47:5000/api/projects';
+const BASE_URL = 'http://192.168.10.47:1080/api/projects';
 
 // Create a new project
 export function createProject(name, created_by) {

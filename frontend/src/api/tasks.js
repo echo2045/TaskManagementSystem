@@ -2,7 +2,7 @@
 import axios from 'axios';
 import apiClient from './apiClient';
 
-const BASE_URL = 'http://192.168.10.47:5000/api/tasks';
+const BASE_URL = 'http://192.168.10.47:1080/api/tasks';
 
 // ✅ Create new task with correct start_date timestamp
 export function createTask(data) {

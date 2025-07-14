@@ -9,7 +9,7 @@ export default defineConfig({
     proxy: {
       // Proxy all requests starting with /api to your backend
       '/api': {
-        target: 'http://192.168.10.47:5000',
+        target: 'http://192.168.10.47:1080',
         changeOrigin: true,
         secure: false,
       },
