@@ -2,7 +2,7 @@ import axios from 'axios';
 import apiClient from './apiClient';
 
 // 1) Base URL
-axios.defaults.baseURL = 'http://localhost:5000/api';
+axios.defaults.baseURL = 'http://192.168.10.47:5000/api';
 
 // 2) Get all users
 export const getUsers = () =>

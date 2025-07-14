@@ -1,7 +1,7 @@
 // frontend/src/api/areas.js
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:5000/api/areas';
+const BASE_URL = 'http://192.168.10.47:5000/api/areas';
 
 // Create a new area
 export function createArea(name, created_by) {

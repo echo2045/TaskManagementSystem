@@ -11,7 +11,7 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const newSocket = io(import.meta.env.VITE_REACT_APP_BACKEND_URL || 'http://localhost:5000');
+    const newSocket = io(import.meta.env.VITE_REACT_APP_BACKEND_URL || 'http://192.168.10.47:5000');
     setSocket(newSocket);
 
     return () => newSocket.close();

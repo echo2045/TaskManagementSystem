@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getAuthToken } from './auth';
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_REACT_APP_BACKEND_URL || 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_REACT_APP_BACKEND_URL || 'http://192.168.10.47:5000/api',
 });
 
 apiClient.interceptors.request.use(
